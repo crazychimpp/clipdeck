@@ -1,0 +1,11 @@
+{
+  "version": "2026.10.15.1403",
+  "built": "2026-10-15T14:03:57Z",
+  "notes": "First online release: automatic updates from GitHub, 1080p background export, adjustable sections, rank position, headline line breaks.",
+  "files": {
+    "server.py": "33c8017fef66515959252f248ff55f8384a90e02bd93b57a89daaf0fd1f40e5b",
+    "requirements.txt": "3fb0402dc82441ebcb1b9492437f83cbec0ede8fef2d617138283f86b054c844",
+    "clipdeck.ico": "ffa4d0b40f01ed2ad333c2157dd8830513e9f7a64e62558834de4e5f2a69645f",
+    "static/index.html": "a09381b837d3f13f50df1c6c4dabfffc43c13ba7c82f2f5dc4850074cb369e13"
+  }
+}

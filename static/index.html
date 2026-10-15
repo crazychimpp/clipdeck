@@ -1,0 +1,2082 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Clipdeck Studio</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23ffd23f'/%3E%3Ctext x='16' y='23' font-family='Impact,sans-serif' font-size='17' text-anchor='middle' fill='%23111'%3E%231%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bangers&family=Bebas+Neue&family=Luckiest+Guy&family=Montserrat:wght@900&family=Oswald:wght@700&family=Permanent+Marker&display=swap">
+<style>
+/* Layout: a dark editing suite for ranking Shorts. Left rail for navigation, a dashboard of rankings, and a three-zone editor (library | 9:16 monitor | inspector) over a full-width rank timeline. */
+:root{
+  --bg:#111318; --panel:#181b22; --raise:#20242d; --line:#2c313c; --line-2:#3a404d;
+  --fg:#eceef3; --mute:#9aa1b0; --faint:#6c7383;
+  --accent:#4d7cff; --accent-ink:#ffffff; --accent-soft:rgba(77,124,255,.16);
+  --hot:#ffd23f; --danger:#ff5d5d; --ok:#3ecf8e;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Figtree","Segoe UI",system-ui,sans-serif;
+  --f-rank:"Anton","Impact",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+img{max-width:100%}
+a.btn{text-decoration:none;color:inherit}
+code{font-family:var(--f-mono);font-size:12px;background:var(--bg);padding:1px 5px;border-radius:4px;word-break:break-all}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45;margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{display:grid;grid-template-columns:76px 1fr;height:100%}
+.rail{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:6px;padding-block:14px;padding-left:env(safe-area-inset-left,0px)}
+.logo{width:40px;height:40px;border-radius:10px;background:var(--hot);display:grid;place-items:center;font-family:var(--f-rank);font-size:19px;color:#111;margin-bottom:14px}
+.navbtn{width:60px;padding:8px 0;border:0;border-radius:10px;background:transparent;color:var(--mute);display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600}
+.navbtn svg{width:22px;height:22px}
+.navbtn[aria-current="page"]{background:var(--accent-soft);color:var(--fg)}
+.navbtn:hover{color:var(--fg)}
+.navbtn:disabled{opacity:.35;cursor:default}
+main{min-width:0;overflow:auto}
+.view{padding-block:28px 40px;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
+.dash{max-width:1180px;margin:0 auto;display:grid;gap:32px}
+.eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--hot);font-weight:800}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
+h1{font-size:clamp(28px,4vw,40px);font-weight:800;letter-spacing:-.02em;line-height:1.1}
+h2{font-size:20px;font-weight:800}
+h3{font-size:14px;font-weight:700;font-family:var(--f-body)}
+.lede{color:var(--mute);max-width:62ch;margin:0}
+.compose{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;display:grid;gap:16px}
+.compose-row{display:grid;grid-template-columns:1fr 110px 190px auto;gap:10px;align-items:end}
+.field{display:grid;gap:6px;min-width:0}
+.field label,.lbl{font-size:12px;color:var(--mute);font-weight:600}
+input[type=text],input[type=number],select,textarea{background:var(--bg);border:1px solid var(--line-2);border-radius:8px;padding:10px 12px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:70px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input[type=checkbox]{accent-color:var(--accent)}
+.btn{border:1px solid var(--line-2);background:var(--raise);border-radius:8px;padding:10px 14px;font-weight:600;display:inline-flex;gap:8px;align-items:center;justify-content:center;white-space:nowrap}
+.btn:hover{border-color:var(--faint)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.1)}
+.btn.ghost{background:transparent}
+.btn.sm{padding:6px 10px;font-size:12px}
+.btn.danger{color:var(--danger)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn svg{width:16px;height:16px}
+.ideas{border-top:1px solid var(--line);padding-top:16px;display:grid;gap:10px}
+.ideas-row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+.ideas-row .field{flex:1;min-width:200px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line-2);background:var(--bg);border-radius:999px;padding:7px 12px;font-size:13px;text-align:left}
+.chip b{font-family:var(--f-rank);font-weight:400;color:var(--hot);margin-right:6px;letter-spacing:.02em}
+.chip:hover{border-color:var(--hot)}
+.note{font-size:12px;color:var(--faint)}
+.status{font-size:13px;color:var(--mute);min-height:1.4em}
+.status.err{color:var(--danger)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;text-align:left;padding:0}
+.card:hover{border-color:var(--line-2)}
+.thumb{aspect-ratio:9/12;background:var(--raise);position:relative;overflow:hidden;max-width:100%}
+.thumb canvas{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+.card-body{padding:12px 14px;display:grid;gap:4px}
+.card-meta{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
+.tag{position:absolute;top:8px;right:8px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:rgba(0,0,0,.6);padding:3px 7px;border-radius:5px}
+.stats{display:flex;gap:28px;flex-wrap:wrap}
+.stat b{display:block;font-family:var(--f-display);font-size:24px;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--mute)}
+.editor{display:grid;grid-template-rows:auto 1fr auto;height:100%;min-height:640px}
+.ed-top{display:flex;gap:10px;align-items:center;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px 16px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+.ed-top input.name{background:transparent;border:1px solid transparent;font-family:var(--f-display);font-weight:800;font-size:17px;padding:6px 8px;width:auto;flex:1;min-width:140px}
+.ed-top input.name:hover,.ed-top input.name:focus{border-color:var(--line-2)}
+.ed-main{display:grid;grid-template-columns:270px minmax(0,1fr) 300px;min-height:0}
+.pane{border-right:1px solid var(--line);overflow:auto;padding:16px;display:grid;gap:18px;align-content:start;min-width:0}
+.pane:last-child{border-right:0;border-left:1px solid var(--line)}
+.tabs{display:flex;gap:4px;background:var(--bg);padding:3px;border-radius:8px}
+.tabs button{flex:1;border:0;background:transparent;padding:7px 4px;border-radius:6px;font-size:12px;font-weight:600;color:var(--mute)}
+.tabs button[aria-selected="true"]{background:var(--raise);color:var(--fg)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.seg button{border:1px solid var(--line-2);background:var(--bg);border-radius:8px;padding:10px 6px;font-size:12px;font-weight:700;display:grid;gap:6px;justify-items:center}
+.seg button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.seg svg{width:44px;height:60px}
+.drop{border:1.5px dashed var(--line-2);border-radius:10px;padding:18px;text-align:center;color:var(--mute);font-size:13px;display:grid;gap:8px;justify-items:center}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.lib{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lib-item{position:relative;background:var(--raise);border-radius:8px;overflow:hidden;aspect-ratio:1;border:1px solid var(--line);padding:0}
+.lib-item img,.lib-item video{width:100%;height:100%;object-fit:cover;display:block}
+.lib-item .cap{position:absolute;left:0;right:0;bottom:0;font-size:10px;padding:3px 6px;background:linear-gradient(transparent,rgba(0,0,0,.8));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.lib-item .kind{position:absolute;top:4px;right:4px;font-size:9px;font-weight:700;background:rgba(0,0,0,.65);padding:2px 5px;border-radius:4px;text-transform:uppercase}
+.lib-item .audio-ico{display:grid;place-items:center;height:100%;color:var(--mute)}
+.stage{display:grid;grid-template-rows:1fr auto;min-height:0;background:#0b0c10;min-width:0}
+.monitor{display:grid;place-items:center;padding:18px;min-height:0;overflow:hidden}
+.monitor canvas{height:100%;max-height:min(70vh,760px);max-width:100%;aspect-ratio:9/16;border-radius:10px;background:#000;box-shadow:0 0 0 1px var(--line)}
+.transport{display:flex;gap:10px;align-items:center;justify-content:center;padding:10px;border-top:1px solid var(--line);flex-wrap:wrap}
+.tc{font-family:var(--f-mono);font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums;min-width:110px;text-align:center}
+.iconbtn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line-2);background:var(--raise);display:grid;place-items:center;padding:0}
+.iconbtn.big{width:46px;height:46px;background:var(--accent);border-color:var(--accent);color:#fff}
+.iconbtn svg{width:18px;height:18px}
+.toggle{display:inline-flex;gap:6px;align-items:center;font-size:12px;color:var(--mute)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row > .field{flex:1}
+.sect{display:grid;gap:10px}
+.sect-h{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.rankpill{font-family:var(--f-rank);font-size:28px;color:#111;background:var(--hot);border-radius:8px;padding:0 12px;line-height:1.3}
+.kindpill{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;background:var(--raise);border:1px solid var(--line-2);border-radius:6px;padding:4px 8px;color:var(--mute)}
+.styles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.style-opt{border:1px solid var(--line-2);background:var(--bg);border-radius:8px;padding:10px 4px;font-size:11px;font-weight:700;display:grid;gap:4px;justify-items:center}
+.style-opt span.s{font-family:var(--f-rank);font-size:16px;letter-spacing:.02em}
+.style-opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.swatches{display:flex;gap:6px;flex-wrap:wrap}
+.sw{width:24px;height:24px;border-radius:6px;border:2px solid transparent;padding:0}
+.sw[aria-pressed="true"]{border-color:var(--fg)}
+.timeline{border-top:1px solid var(--line);background:var(--panel);padding:10px max(16px,env(safe-area-inset-right,0px)) 14px max(16px,env(safe-area-inset-left,0px));display:grid;gap:8px}
+.tl-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.tl-scroll{overflow-x:auto;padding-bottom:4px}
+.tl-track{position:relative;display:flex;gap:4px;min-width:100%;height:84px;padding-top:16px}
+.ruler{position:absolute;top:0;left:0;right:0;height:14px;font-family:var(--f-mono);font-size:9px;color:var(--faint);cursor:pointer}
+.ruler span{position:absolute;top:0;transform:translateX(-50%)}
+.clip{position:relative;height:68px;border-radius:7px;border:1.5px solid transparent;overflow:hidden;flex:none;padding:6px 8px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;color:#fff;background:var(--raise)}
+.clip[aria-selected="true"]{border-color:var(--hot)}
+.clip .rk{font-family:var(--f-rank);font-size:20px;line-height:1;color:var(--hot);text-shadow:0 1px 3px #000;position:relative}
+.clip .kd{font-size:10px;font-weight:800;letter-spacing:.1em;position:relative;text-shadow:0 1px 2px #000}
+.clip .ct{font-size:11px;font-weight:700;line-height:1.2;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-shadow:0 1px 2px rgba(0,0,0,.7);position:relative}
+.clip .cd{font-family:var(--f-mono);font-size:10px;opacity:.85;position:absolute;right:6px;top:6px}
+.clip .bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.5}
+.clip.dragging{opacity:.4}
+.clip.drop-on{border-color:var(--accent)}
+.playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--hot);pointer-events:none;z-index:3}
+.playhead::before{content:"";position:absolute;top:0;left:-5px;border:6px solid transparent;border-top-color:var(--hot)}
+.music-lane{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mute);min-height:24px}
+.music-bar{height:18px;border-radius:5px;background:repeating-linear-gradient(90deg,rgba(62,207,142,.35) 0 2px,transparent 2px 5px);flex:1;border:1px solid rgba(62,207,142,.4)}
+.modal{position:fixed;inset:0;background:rgba(5,6,10,.72);display:grid;place-items:center;z-index:50;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.modal-box{background:var(--panel);border:1px solid var(--line-2);border-radius:14px;padding:22px;width:min(440px,100%);display:grid;gap:14px;max-height:100%;overflow:auto}
+.modal-box video{width:100%;max-height:50vh;border-radius:8px;background:#000}
+.modal-box.wide{width:min(660px,100%)}
+.cut-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.cut-stage{background:#000;border-radius:10px;display:grid;place-items:center;overflow:hidden}
+.cut-stage video{width:auto;max-width:100%;max-height:40vh;display:block;border-radius:0}
+.cut-bar{position:relative;height:58px;margin:4px 9px 0;border-radius:8px;background:var(--bg);touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none}
+.strip{position:absolute;inset:0;display:flex;border-radius:8px;overflow:hidden;opacity:.5}
+.strip canvas{flex:1;min-width:0;width:0;height:100%;display:block}
+.win{position:absolute;top:-3px;bottom:-3px;min-width:12px;border:3px solid var(--hot);border-radius:6px;background:rgba(255,210,63,.16);cursor:grab}
+.win:active{cursor:grabbing}
+.hdl{position:absolute;top:50%;width:14px;height:36px;background:var(--hot);border-radius:4px;transform:translateY(-50%);cursor:ew-resize;display:grid;place-items:center}
+.hdl::after{content:"";width:2px;height:14px;background:#111;border-radius:1px}
+.hdl.l{left:-10px}.hdl.r{right:-10px}
+.cph{position:absolute;top:-7px;bottom:-7px;width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 3px #000;pointer-events:none}
+.cut-ticks{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:10px;color:var(--faint);margin:0 9px}
+.cut-row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}
+.cut-len{display:grid;justify-items:end}
+.cut-len b{font-family:var(--f-rank);font-weight:400;font-size:30px;line-height:1;color:var(--hot);font-variant-numeric:tabular-nums}
+.cut-len b.max{color:var(--danger)}
+.cut-len span{font-size:11px;color:var(--mute)}
+.cut-sum{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:12px;color:var(--mute)}
+.cut-sum b{font-family:var(--f-mono);font-weight:500;color:var(--fg)}
+@media (max-width:520px){.cut-row{grid-template-columns:1fr 1fr}.cut-len{grid-column:1/-1;justify-items:start}}
+.meter{height:6px;background:var(--bg);border-radius:4px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent);width:0}
+.copyrow{display:flex;gap:6px;align-items:flex-start}
+.copyrow textarea,.copyrow input{flex:1}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:8px;font-weight:600;z-index:60;font-size:13px}
+.empty{color:var(--mute);font-size:13px;padding:8px 0}
+.hint{font-size:12px;color:var(--faint)}
+.code{font-family:var(--f-mono);font-size:11px;line-height:1.5;min-height:150px;white-space:pre;overflow:auto;color:var(--fg)}
+.code.short{min-height:74px}
+.links{display:grid;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.link-row{display:grid;gap:6px;padding:10px;border-bottom:1px solid var(--line);background:var(--panel)}
+.link-row:last-child{border-bottom:0}
+.link-row.sel{background:var(--raise)}
+.link-h{display:flex;gap:6px;align-items:center;font-size:12px;min-width:0}
+.link-h b{font-family:var(--f-rank);font-weight:400;font-size:15px;color:var(--hot);letter-spacing:.02em}
+.link-h .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--mute)}
+.link-row input{padding:7px 9px;font-size:12px}
+.times{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.plat{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:var(--raise);color:var(--mute);white-space:nowrap}
+.plat[data-p="youtube"]{background:rgba(255,48,48,.18);color:#ff7a7a}
+.plat[data-p="tiktok"]{background:rgba(37,244,238,.14);color:#6ff3ef}
+.plat[data-p="instagram"]{background:rgba(225,48,108,.18);color:#ff7fb0}
+.plat[data-p="facebook"]{background:rgba(24,119,242,.2);color:#8ab8ff}
+.plat[data-p="bad"]{background:rgba(255,93,93,.16);color:var(--danger)}
+.got{font-size:10px;font-weight:700;color:var(--ok);white-space:nowrap}
+.bad-input{border-color:var(--danger)!important}
+details{border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+details summary{cursor:pointer;font-size:12px;font-weight:700;color:var(--mute)}
+details[open] summary{margin-bottom:8px}
+details > .sect{gap:8px}
+.steps{margin:0;padding-left:18px;display:grid;gap:4px;font-size:12px;color:var(--mute)}
+.card-open{all:unset;display:flex;flex-direction:column;cursor:pointer;border-radius:12px 12px 0 0}
+.card-open:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.card-acts{display:flex;gap:6px;padding:0 10px 12px;justify-content:flex-end}
+.settings{max-width:760px}
+.set-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:12px}
+.set-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.pill{font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;background:var(--raise);color:var(--mute);white-space:nowrap}
+.pill.ok{background:rgba(62,207,142,.16);color:var(--ok)}
+.pill.bad{background:rgba(255,93,93,.14);color:var(--danger)}
+.fetchrow{flex-wrap:nowrap;min-width:0}
+.jobwrap{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.job{font-size:11px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.job.ok{color:var(--ok)}
+.job.err{color:var(--danger);white-space:normal}
+.jbar{flex:1;height:4px;background:var(--bg);border-radius:3px;overflow:hidden;min-width:30px}
+.jbar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.savest{font-size:12px;color:var(--faint);min-width:52px}
+.banner{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--raise);border:1px solid var(--line-2);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--mute)}
+.wchips{display:flex;flex-wrap:wrap;gap:6px}
+.wchip{border:1px solid var(--line-2);background:var(--bg);border-radius:6px;padding:6px 9px;font-weight:800;font-size:12px;box-shadow:inset 0 -3px 0 var(--wc,transparent)}
+.wchip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.wpanel{display:grid;gap:10px;border:1px solid var(--line-2);border-radius:10px;padding:12px;background:var(--bg)}
+.sw-none{background:var(--bg)!important;color:var(--mute);font-size:13px;line-height:1;border:1px dashed var(--line-2)!important}
+.swatches input[type=color]{width:30px;height:24px;padding:0;border:1px solid var(--line-2);border-radius:6px;background:none;cursor:pointer}
+.hl-group{display:grid;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.rgb{display:grid;gap:8px;border:1px solid var(--line-2);border-radius:10px;padding:10px;background:var(--bg)}
+.rgb-top{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.rgb-top .field{flex:1;min-width:90px}
+.rgb-prev{width:56px;height:42px;border-radius:8px;border:1px solid var(--line-2);position:relative;cursor:pointer;flex:none;overflow:hidden;box-shadow:inset 0 0 0 2px rgba(0,0,0,.25)}
+.rgb-prev input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;border:0;padding:0}
+.rgb-hex{font-family:var(--f-mono);text-transform:uppercase;padding:7px 9px!important}
+.rgb-css{font-family:var(--f-mono);font-size:11px;color:var(--mute);padding-bottom:9px;white-space:nowrap}
+.rgb-row{display:grid;grid-template-columns:14px 1fr 62px;gap:8px;align-items:center}
+.rgb-l{font-size:11px;font-weight:800;color:var(--mute)}
+.rgb-n{padding:6px 8px!important;font-family:var(--f-mono);font-size:12px;font-variant-numeric:tabular-nums}
+input[type=range].rgb-s{-webkit-appearance:none;appearance:none;height:14px;border-radius:7px;background:var(--track,#888);border:1px solid var(--line-2);margin:0}
+input[type=range].rgb-s::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid #111;box-shadow:0 0 0 1px #fff;cursor:pointer}
+input[type=range].rgb-s::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid #111;cursor:pointer}
+input[type=range].rgb-s::-moz-range-track{background:transparent}
+.wts{display:flex;flex-wrap:wrap;gap:4px}
+.wts button{border:1px solid var(--line-2);background:var(--bg);border-radius:6px;padding:5px 9px;font-size:12px}
+.wts button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.libres{display:grid;gap:2px;max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:4px}
+.libres:empty{display:none}
+.libitem{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px}
+.libitem:hover{background:var(--raise)}
+.libname{flex:1;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.libres .hint{padding:4px 6px;margin:0}
+.wbreak{flex-basis:100%;height:0}
+#headline{min-height:64px;font-weight:700}
+.seg3{grid-template-columns:1fr 1fr 1fr}
+@media (max-width:1100px){.ed-main{grid-template-columns:230px minmax(0,1fr) 270px}}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .rail{flex-direction:row;justify-content:flex-start;padding:8px max(12px,env(safe-area-inset-left,0px));border-right:0;border-bottom:1px solid var(--line)}
+  .logo{margin:0 10px 0 0}
+  .navbtn{flex-direction:row;width:auto;padding:8px 10px}
+  .editor{height:auto}
+  .ed-main{grid-template-columns:1fr}
+  .stage{order:-1}
+  .monitor canvas{max-height:62vh;height:auto;width:min(100%,340px)}
+  .pane,.pane:last-child{border:0;border-top:1px solid var(--line)}
+  .compose-row{grid-template-columns:1fr 1fr}
+  .compose-row .field:first-child,.compose-row .btn{grid-column:1/-1}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+</head>
+<body>
+<div class="app">
+  <nav class="rail" aria-label="Main">
+    <div class="logo" aria-hidden="true">#1</div>
+    <button class="navbtn" id="nav-dash" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Rankings</button>
+    <button class="navbtn" id="nav-edit" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M10.5 9.5v5l4-2.5z" fill="currentColor"/></svg>Editor</button>
+    <button class="navbtn" id="nav-set">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+  </nav>
+  <main id="main"></main>
+</div>
+<input type="file" id="file-in" accept="video/*,image/*,audio/*" multiple hidden>
+
+<script>
+(() => {
+"use strict";
+// ---------- local server API ----------
+const API = {
+  async req(method, path, body, isForm) {
+    const opts = { method, headers: { "X-Clipdeck": "1" } };
+    if (body !== undefined) {
+      if (isForm) opts.body = body;
+      else { opts.body = JSON.stringify(body); opts.headers["Content-Type"] = "application/json"; }
+    }
+    let r;
+    try { r = await fetch(path, opts); } catch (e) { throw { code: 0, message: "Can't reach the Clipdeck server. Is it still running?" }; }
+    let data = null; try { data = await r.json(); } catch (e) {}
+    if (!r.ok) throw { code: r.status, message: (data && data.detail) || `Request failed (${r.status})` };
+    return data;
+  },
+  get(p) { return this.req("GET", p); },
+  post(p, b) { return this.req("POST", p, b ?? {}); },
+  put(p, b) { return this.req("PUT", p, b); },
+  del(p) { return this.req("DELETE", p); },
+  form(p, f) { return this.req("POST", p, f, true); }
+};
+
+// ---------- model: a ranking = optional hook, N items, optional outro. Ranks come from position + order. ----------
+const W = 720, H = 1280;
+const BGS = ["#1d3fbf", "#c2185b", "#0f8a6a", "#e65100", "#5e35b1", "#263238", "#b71c1c", "#00838f"];
+const uid = () => Math.random().toString(36).slice(2, 10);
+const S = { status: {}, jobs: {}, projects: [], media: {}, cur: null, view: "dash", t: 0, playing: false, exporting: false, sel: 0, tab: "media", guides: false };
+const els = {};
+const MAX_CLIP = 20; // seconds per clip
+const mk = (kind, text, dur, bg, label = "") => ({ id: uid(), kind, mediaId: null, trim: 0, dur, text, label, bg, zoom: 1, panX: 0, panY: 0, motion: true, src: { url: "", from: "", to: "" } });
+
+// ---------- source links → yt-dlp command ----------
+// "12", "0:12", "1:02.5" → seconds; blank → null; anything else → NaN
+function parseT(v) {
+  v = String(v || "").trim(); if (!v) return null;
+  if (!/^\d+(:\d{1,2})?(\.\d+)?$|^\d+:\d{2}:\d{2}(\.\d+)?$/.test(v)) return NaN;
+  return v.split(":").reduce((a, x) => a * 60 + parseFloat(x), 0);
+}
+function cleanUrl(u) { u = String(u || "").trim(); if (!/^https?:\/\/[^\s]+$/i.test(u)) return ""; return u.replace(/["$`\\!]/g, ""); }
+function platformOf(u) {
+  u = String(u || "").trim(); if (!u) return null;
+  if (!cleanUrl(u)) return { k: "bad", n: "Not a link" };
+  const h = (u.match(/^https?:\/\/([^/?#]+)/i) || [])[1]?.toLowerCase() || "";
+  if (/(^|\.)youtube\.com$|(^|\.)youtu\.be$/.test(h)) return { k: "youtube", n: /\/shorts\//.test(u) ? "YT Short" : "YouTube" };
+  if (/(^|\.)tiktok\.com$/.test(h)) return { k: "tiktok", n: "TikTok" };
+  if (/(^|\.)instagram\.com$/.test(h)) return { k: "instagram", n: "Instagram" };
+  if (/(^|\.)facebook\.com$|(^|\.)fb\.watch$/.test(h)) return { k: "facebook", n: "Facebook" };
+  return { k: "other", n: h.replace(/^www\./, "") };
+}
+const slugify = (s, n = 30) => String(s || "").toLowerCase().normalize("NFKD").replace(/[^\w\s-]/g, "").trim().replace(/[\s_]+/g, "-").replace(/-+/g, "-").slice(0, n).replace(/-$/, "");
+function fileTag(p, s) { return s.kind === "item" ? `r${rankOf(p, s)}${s.label ? "-" + slugify(s.label, 24) : ""}` : s.kind; }
+function buildCmd(p, browser) {
+  const folder = slugify(p.name, 40) || "ranking", out = [];
+  p.scenes.forEach((s, i) => {
+    const u = cleanUrl(s.src && s.src.url); if (!u) return;
+    const a = parseT(s.src.from), b = parseT(s.src.to);
+    // Always cut: from the start time (or 0) to the end time, never longer than MAX_CLIP.
+    const a0 = a != null && !isNaN(a) ? a : 0;
+    const b0 = Math.min(b != null && !isNaN(b) && b > a0 ? b : a0 + MAX_CLIP, a0 + MAX_CLIP);
+    const sec = ` --download-sections "*${+a0.toFixed(2)}-${+b0.toFixed(2)}" --force-keyframes-at-cuts`;
+    const name = `${String(i + 1).padStart(2, "0")}-${fileTag(p, s)}_cd-${s.id}`;
+    out.push(`yt-dlp -f "bv*[height<=1080]+ba/b[height<=1080]/b" --merge-output-format mp4${browser ? " --cookies-from-browser " + browser : ""}${sec} -o "${name}.%(ext)s" "${u}"`);
+  });
+  if (!out.length) return "";
+  return [`mkdir -p ~/Videos/clipdeck/${folder} && cd ~/Videos/clipdeck/${folder}`, ...out, `xdg-open .`].join("\n");
+}
+
+function exampleProject() {
+  return normalize({
+    id: uid(), example: true, name: "Top 5 Goalkeeper Blunders", headline: "TOP 5 KEEPER BLUNDERS", order: "down", layout: "ladder",
+    updated: Date.now(), captionStyle: "punch", flash: true, music: null,
+    scenes: [
+      mk("hook", "Number one should end his career", 2.5, BGS[5]),
+      mk("item", "Slips on the wet grass and the ball rolls past", 4, BGS[0], "The Slip"),
+      mk("item", "Throws it straight into his own net", 4, BGS[1], "Own-Goal Throw"),
+      mk("item", "Celebrates before the ball stops rolling", 4, BGS[2], "Early Celebration"),
+      mk("item", "Tries to dribble the striker and loses it", 4, BGS[3], "Failed Dribble"),
+      mk("item", "Punches his own defender into the goal", 4.5, BGS[6], "The Punch"),
+      mk("outro", "Which one hurt the most? Comment below", 3, BGS[4])
+    ],
+    meta: { title: "Top 5 Goalkeeper Blunders, Ranked 😳", description: "Five keeper mistakes ranked from bad to unforgivable. Which one is the worst?", hashtags: "shorts, football, soccer, goalkeeper, ranking" }
+  });
+}
+// Fill defaults and upgrade projects saved by the earlier general-purpose version.
+function normalize(p) {
+  p.headline = p.headline ?? (p.name || "").toUpperCase();
+  p.order = p.order || "down"; p.layout = p.layout || "ladder";
+  if (p.keepTop == null) p.keepTop = true;
+  if (!p.ladderBg) p.ladderBg = "clear";
+  // Default layout: a solid top section with the headline, the clip in the middle, and a matching bottom section.
+  if (!p.bandsV1) { p.videoArea = "bands"; p.bandsV1 = true; }
+  // The clip fills the whole middle between the two sections.
+  if (!p.fillV1) { if (p.videoArea === "bands") p.videoFit = "fill"; p.fillV1 = true; }
+  if (!p.videoArea) p.videoArea = "bands";
+  if (!p.bandColor) p.bandColor = "#000000";
+  if (p.bandExtra == null) p.bandExtra = 0;
+  if (p.bandH === undefined) p.bandH = null; // null = auto
+  if (p.rankPos == null) p.rankPos = 0;
+  if (!p.videoFit) p.videoFit = "fit";
+  if (p.videoNudge == null) p.videoNudge = 0;
+  p.meta = p.meta || { title: "", description: "", hashtags: "" };
+  p.hl = Object.assign({ font: "Anton", size: 58, color: "#ffffff", bg: "#000000", caps: true, words: [] }, p.hl || {});
+  const n = p.scenes.length;
+  p.scenes.forEach((s, i) => {
+    if (!s.kind) s.kind = s.rank ? "item" : i === 0 ? "hook" : i === n - 1 ? "outro" : "item";
+    if (s.label == null) s.label = "";
+    if (s.panY == null) s.panY = 0;
+    if (!s.src) s.src = { url: "", from: "", to: "" };
+    if (s.dur > MAX_CLIP) s.dur = MAX_CLIP;
+    if (typeof s.rank !== "number") delete s.rank; // old versions stored "#5" strings
+  });
+  const g = { hook: 0, item: 1, outro: 2 };
+  p.scenes = p.scenes.map((s, i) => [s, i]).sort((a, b) => g[a[0].kind] - g[b[0].kind] || a[1] - b[1]).map(x => x[0]);
+  p.scenes.filter(s => s.kind === "hook").slice(1).forEach(s => s.kind = "item");
+  p.scenes.filter(s => s.kind === "outro").slice(0, -1).forEach(s => s.kind = "item");
+  return p;
+}
+const items = p => p.scenes.filter(s => s.kind === "item");
+const MAX_RANKS = 6;
+const full = p => items(p).length >= MAX_RANKS;
+// Countdown and start-at-#1 derive ranks from play position. Shuffle keeps each item's own rank.
+function rankOf(p, s) {
+  const it = items(p), i = it.indexOf(s); if (i < 0) return 0;
+  if (p.order === "shuffle") return s.rank || i + 1;
+  return p.order === "down" ? it.length - i : i + 1;
+}
+// Keep shuffle ranks a clean 1..N after items are added, copied or deleted.
+function fixRanks(p) {
+  if (p.order !== "shuffle") return;
+  [...items(p)].sort((a, b) => (a.rank || 1e9) - (b.rank || 1e9)).forEach((s, i) => s.rank = i + 1);
+}
+// Random play order. With keepTop, #1 always plays last. Avoids landing on a plain countdown.
+function shuffledItems(p) {
+  const it = items(p), N = it.length; let best = it;
+  for (let tries = 0; tries < 12; tries++) {
+    const a = [...it];
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    if (p.keepTop) { const top = a.findIndex(s => s.rank === 1); if (top >= 0) a.push(a.splice(top, 1)[0]); }
+    best = a;
+    const ranks = (p.keepTop ? a.slice(0, -1) : a).map(s => s.rank), down = ranks.every((r, i) => i === 0 || r < ranks[i - 1]), up = ranks.every((r, i) => i === 0 || r > ranks[i - 1]);
+    const same = a.every((s, i) => s === it[i]);
+    if (N < 3 || (!down && !up && !same)) break;
+  }
+  return best;
+}
+function setPlayOrder(p, list) {
+  const hook = p.scenes.filter(s => s.kind === "hook"), out = p.scenes.filter(s => s.kind === "outro");
+  p.scenes = [...hook, ...list, ...out];
+}
+const totalDur = p => (p || S.cur).scenes.reduce((a, s) => a + s.dur, 0);
+function sceneAtIn(p, t) {
+  const sc = p.scenes; let start = 0;
+  for (let i = 0; i < sc.length; i++) { if (t < start + sc[i].dur || i === sc.length - 1) return { s: sc[i], i, start }; start += sc[i].dur; }
+  return null;
+}
+const sceneAt = t => sceneAtIn(S.cur, t);
+const sceneStart = i => S.cur.scenes.slice(0, i).reduce((a, s) => a + s.dur, 0);
+const fmt = t => { t = Math.max(0, t); const m = Math.floor(t / 60), s = t % 60; return `${m}:${s.toFixed(1).padStart(4, "0")}`; };
+const saveTimers = {};
+function setSaved(v) { const el = document.getElementById("save-st"); if (el) el.textContent = v === null ? "Saving…" : v ? "Saved" : "Not saved"; }
+function saveProject(p, now) {
+  clearTimeout(saveTimers[p.id]);
+  const go = () => { delete saveTimers[p.id]; return API.put(`/api/projects/${p.id}`, p).then(() => setSaved(true)).catch(e => { setSaved(false); toast("Couldn't save: " + e.message); }); };
+  if (now) return go();
+  saveTimers[p.id] = setTimeout(go, 500);
+}
+function touch(p = S.cur) { if (!p) return; fixRanks(p); p.updated = Date.now(); setSaved(null); saveProject(p); }
+window.addEventListener("pagehide", () => {
+  for (const id of Object.keys(saveTimers)) {
+    clearTimeout(saveTimers[id]); const p = S.projects.find(x => x.id === id);
+    if (p) fetch(`/api/projects/${id}`, { method: "PUT", keepalive: true, headers: { "X-Clipdeck": "1", "Content-Type": "application/json" }, body: JSON.stringify(p) });
+  }
+});
+
+// ---------- media ----------
+function mediaEl(id) {
+  if (!id || !S.media[id]) return null;
+  if (els[id]) return els[id];
+  const m = S.media[id], url = `/media/${id}`;
+  let el;
+  if (m.type === "image") { el = new Image(); el.src = url; el.onload = () => drawNow(); }
+  else { el = document.createElement(m.type === "video" ? "video" : "audio"); el.src = url; el.preload = "auto"; el.playsInline = true; if (m.type === "video") el.addEventListener("loadeddata", () => drawNow()); }
+  els[id] = { el, url, type: m.type };
+  if (AU.ctx && m.type !== "image") AU.route(els[id]);
+  return els[id];
+}
+async function addFiles(files, assign) {
+  const p = S.cur, added = [];
+  const ok = files.filter(f => /^(video|image|audio)\//.test(f.type) || /\.(mp4|mov|webm|mkv|m4v|jpe?g|png|webp|gif|mp3|m4a|wav|ogg|aac|flac)$/i.test(f.name));
+  if (!ok.length) return toast("Those files aren't video, image or audio.");
+  for (let i = 0; i < ok.length; i++) {
+    toast(ok.length > 1 ? `Adding ${i + 1} of ${ok.length}…` : `Adding ${ok[i].name}…`);
+    const fd = new FormData(); fd.append("projectId", p.id); fd.append("file", ok[i], ok[i].name);
+    try { const m = await API.form("/api/media", fd); S.media[m.id] = m; added.push(m); }
+    catch (e) { toast(`Couldn't add ${ok[i].name}: ${e.message}`); }
+  }
+  if (!added.length) return;
+  if (assign && S.cur === p) {
+    const visual = added.filter(m => m.type !== "audio"), s = p.scenes[S.sel];
+    if (s && visual[0]) { s.mediaId = visual[0].id; s.trim = 0; onVideoSet(S.sel); }
+    const aud = added.find(m => m.type === "audio");
+    if (aud && !p.music) p.music = { mediaId: aud.id, vol: 0.6 };
+  }
+  touch(p); toast(`Added ${added.length} file${added.length > 1 ? "s" : ""}`);
+  if (S.cur === p && S.view === "edit") render();
+}
+// Fill empty ranks in play order, so the first clip lands on the first rank shown.
+function autofill() {
+  const vis = projMedia().filter(m => m.type !== "audio"); if (!vis.length) return;
+  let k = 0, n = 0;
+  for (const s of S.cur.scenes) if (!s.mediaId && s.kind === "item") { s.mediaId = vis[k % vis.length].id; s.trim = 0; k++; n++; }
+  touch(); toast(n ? `Filled ${n} rank${n > 1 ? "s" : ""} in play order` : "Every rank already has a clip"); render();
+}
+const projMedia = () => Object.values(S.media).filter(m => m.projectId === S.cur.id);
+
+// ---------- audio graph ----------
+const AU = {
+  ctx: null, master: null, rec: null, srcs: new WeakSet(),
+  init() {
+    if (this.ctx) { if (this.ctx.state === "suspended") this.ctx.resume(); return; }
+    try {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      this.master = this.ctx.createGain(); this.master.connect(this.ctx.destination);
+      this.rec = this.ctx.createMediaStreamDestination();
+      Object.values(els).forEach(x => x.type !== "image" && this.route(x));
+    } catch (e) { this.ctx = null; }
+  },
+  route(x) {
+    if (!this.ctx || this.srcs.has(x.el)) return;
+    try { const src = this.ctx.createMediaElementSource(x.el); x.gain = this.ctx.createGain(); src.connect(x.gain); x.gain.connect(this.master); this.srcs.add(x.el); } catch (e) {}
+  }
+};
+
+// ---------- drawing ----------
+const canvas = document.createElement("canvas"); canvas.width = W; canvas.height = H; canvas.setAttribute("aria-label", "Video preview");
+const ctx = canvas.getContext("2d");
+// Top and bottom sections: the same height and colour. The top one holds the headline,
+// starting below the Shorts search bar; the clip fills the space between them.
+const BAND_TOP_PAD = 100, BAND_BOTTOM_PAD = 34, BAND_MIN = 200, BAND_MAX = 460, BAND_SET_MIN = 40, BAND_SET_MAX = 520;
+// Auto height: just enough for the headline below the Shorts search bar.
+function bandAutoHeight(c, p) {
+  c.save(); const bottom = drawHeadline(c, p, true, { top: BAND_TOP_PAD, plain: true }); c.restore();
+  const auto = hlWordList(p).length ? bottom + BAND_BOTTOM_PAD : BAND_MIN;
+  return Math.round(Math.min(BAND_MAX, Math.max(BAND_MIN, auto)));
+}
+// Both sections share one height: the one you set, or auto.
+function bandHeight(c, p) {
+  if (p.bandH) return Math.round(Math.max(BAND_SET_MIN, Math.min(BAND_SET_MAX, p.bandH)));
+  return bandAutoHeight(c, p);
+}
+// Where the headline sits inside a top section of height T, shrinking it if the section is too short.
+function bandHeadlinePlacement(c, p, T) {
+  c.save(); const natural = drawHeadline(c, p, true, { top: 0, plain: true }); c.restore();
+  if (!natural) return { top: 0, scale: 1 };
+  const pad = Math.max(6, Math.round(T * 0.08));
+  const scale = Math.min(1, (T - pad * 2) / natural);
+  const hb = natural * scale;
+  // Keep clear of the search bar when there's room; otherwise centre it.
+  const top = T >= hb + BAND_TOP_PAD + 20 ? Math.min(BAND_TOP_PAD, T - hb - BAND_BOTTOM_PAD) : (T - hb) / 2;
+  return { top: Math.max(0, top), scale: Math.max(0.2, scale) };
+}
+// Where the clip goes: the space under the headline (plus any extra push down the user set).
+function videoArea(c, p) {
+  c.save(); const bottom = drawHeadline(c, p, true); c.restore();
+  const y = Math.round(Math.min(H - 320, bottom + 16 + (p.videoNudge || 0)));
+  return { x: 0, y, w: W, h: H - y };
+}
+// Draw a clip inside an area. "fit" shows the whole frame; "fill" covers the area and crops the edges.
+function drawMedia(c, el, iw, ih, zoom, panX, a, mode, panY = 0, pinTop = false) {
+  if (!iw || !ih) return;
+  const base = mode === "fit" ? Math.min(a.w / iw, a.h / ih) : Math.max(a.w / iw, a.h / ih);
+  const sc = base * zoom, dw = iw * sc, dh = ih * sc;
+  const x = a.x + (a.w - dw) / 2 + panX * Math.max(0, dw - a.w) / 2;
+  // Vertical placement: centred by default; "Frame up/down" picks which part shows when the clip
+  // is taller than its space. In the below-the-headline layout the clip starts at the top.
+  const over = Math.max(0, dh - a.h);
+  const y = over > 0
+    ? (pinTop ? a.y - (panY + 1) * over / 2 : a.y + (a.h - dh) / 2 - panY * over / 2)
+    : (pinTop ? a.y : a.y + (a.h - dh) / 2);
+  c.save(); c.beginPath(); c.rect(a.x, a.y, a.w, a.h); c.clip();
+  c.drawImage(el, x, y, dw, dh);
+  c.restore();
+}
+// Soft blurred copy of the clip behind everything, so fitted clips don't float on a flat colour.
+const blurCv = document.createElement("canvas"); blurCv.width = 36; blurCv.height = 64;
+function drawBlurredBackdrop(c, el, iw, ih) {
+  if (!iw || !ih) return;
+  const b = blurCv.getContext("2d"), sc = Math.max(36 / iw, 64 / ih);
+  try { b.drawImage(el, (36 - iw * sc) / 2, (64 - ih * sc) / 2, iw * sc, ih * sc); } catch (e) { return; }
+  c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = "high";
+  c.drawImage(blurCv, -40, -40, W + 80, H + 80);
+  c.fillStyle = "rgba(0,0,0,.5)"; c.fillRect(0, 0, W, H); c.restore();
+}
+function drawCover(c, el, iw, ih, zoom, panX) {
+  if (!iw || !ih) return;
+  const sc = Math.max(W / iw, H / ih) * zoom, dw = iw * sc, dh = ih * sc;
+  c.drawImage(el, (W - dw) / 2 + panX * (dw - W) / 2, (H - dh) / 2, dw, dh);
+}
+function wrapWords(c, words, maxW) {
+  const lines = []; let line = [];
+  for (let i = 0; i < words.length; i++) {
+    const test = line.map(j => words[j]).concat(words[i]).join(" ");
+    if (line.length && c.measureText(test).width > maxW) { lines.push(line); line = [i]; } else line.push(i);
+  }
+  if (line.length) lines.push(line); return lines;
+}
+function fitText(c, text, maxW) { if (c.measureText(text).width <= maxW) return text; let t = text; while (t.length > 1 && c.measureText(t + "…").width > maxW) t = t.slice(0, -1); return t.trimEnd() + "…"; }
+function roundRect(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function strokeFill(c, txt, x, y, fill, lw) { c.lineJoin = "round"; c.lineWidth = lw; c.strokeStyle = "#000"; c.strokeText(txt, x, y); c.fillStyle = fill; c.fillText(txt, x, y); }
+
+const CAP = { punch: { font: "60px Anton", up: true, lh: 76 }, box: { font: "800 46px Figtree", up: false, lh: 70 }, clean: { font: "700 44px Figtree", up: false, lh: 60 } };
+function drawCaption(c, text, prog, style, yC) {
+  if (!text) return;
+  const st = CAP[style] || CAP.punch;
+  const words = (st.up ? text.toUpperCase() : text).split(/\s+/).filter(Boolean);
+  c.font = st.font; c.textBaseline = "middle"; c.textAlign = "left";
+  const lines = wrapWords(c, words, W - 170);
+  const active = Math.min(words.length - 1, Math.floor(prog * words.length * 1.15));
+  const sp = c.measureText(" ").width;
+  let y = yC - (lines.length - 1) * st.lh / 2;
+  for (const ln of lines) {
+    const ws = ln.map(i => c.measureText(words[i]).width), lw = ws.reduce((a, b) => a + b, 0) + sp * (ln.length - 1);
+    let x = (W - 90 - lw) / 2 + 10; // centred in the area left of the Shorts buttons
+    if (style === "box") { c.fillStyle = "#fff"; roundRect(c, x - 20, y - st.lh / 2 + 4, lw + 40, st.lh - 8, 14); c.fill(); }
+    ln.forEach((wi, k) => {
+      const on = wi === active;
+      if (style === "punch") strokeFill(c, words[wi], x, y, on ? "#FFD23F" : "#fff", 11);
+      else if (style === "box") { c.fillStyle = on ? "#1d4ed8" : "#111"; c.fillText(words[wi], x, y); }
+      else { c.shadowColor = "rgba(0,0,0,.8)"; c.shadowBlur = 12; c.fillStyle = wi <= active ? "#fff" : "rgba(255,255,255,.55)"; c.fillText(words[wi], x, y); c.shadowBlur = 0; if (on) { c.fillStyle = "#FFD23F"; c.fillRect(x, y + 28, ws[k], 6); } }
+      x += ws[k] + sp;
+    });
+    y += st.lh;
+  }
+}
+// Headline: stays on screen the whole video. Each word can have its own color, font, weight and size.
+// Fonts come from the Google Fonts API; each lists the weights Google actually has for it.
+const FONT_LIB = {
+  "Anton": { fb: "Impact, sans-serif", weights: [400], def: 400 },
+  "Bebas Neue": { fb: "Impact, sans-serif", weights: [400], def: 400 },
+  "Oswald": { fb: "Impact, sans-serif", weights: [400, 500, 600, 700], def: 700 },
+  "Archivo Black": { fb: "Impact, sans-serif", weights: [400], def: 400 },
+  "Montserrat": { fb: "Arial, sans-serif", weights: [400, 600, 700, 800, 900], def: 900 },
+  "Figtree": { fb: "Arial, sans-serif", weights: [400, 600, 700, 800, 900], def: 900 },
+  "Poppins": { fb: "Arial, sans-serif", weights: [400, 600, 700, 800, 900], def: 800 },
+  "Kanit": { fb: "Arial, sans-serif", weights: [400, 600, 700, 800, 900], def: 800 },
+  "Barlow Condensed": { fb: "Arial Narrow, sans-serif", weights: [400, 600, 700, 800, 900], def: 800 },
+  "Teko": { fb: "Impact, sans-serif", weights: [400, 500, 600, 700], def: 600 },
+  "Russo One": { fb: "Impact, sans-serif", weights: [400], def: 400 },
+  "Black Ops One": { fb: "Impact, sans-serif", weights: [400], def: 400 },
+  "Bangers": { fb: "Impact, cursive", weights: [400], def: 400 },
+  "Luckiest Guy": { fb: "Impact, cursive", weights: [400], def: 400 },
+  "Permanent Marker": { fb: "cursive", weights: [400], def: 400 }
+};
+// The 100 most popular families on Google Fonts (fonts.google.com popularity ranking, fetched Oct 2026),
+// in rank order, with the upright weights Google serves for each.
+const TOP_FONTS = [["Roboto","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Open Sans","Sans Serif",[300,400,500,600,700,800]],["Google Sans","Sans Serif",[400,500,600,700]],["Inter","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Montserrat","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Poppins","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Lato","Sans Serif",[100,300,400,700,900]],["Noto Sans JP","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Arimo","Sans Serif",[400,500,600,700]],["Roboto Condensed","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Roboto Mono","Monospace",[100,200,300,400,500,600,700]],["Oswald","Sans Serif",[200,300,400,500,600,700]],["Noto Sans","Sans Serif",[100,200,300,400,500,600,700,800,900]],["DM Sans","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Raleway","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Playfair Display","Serif",[400,500,600,700,800,900]],["Nunito","Sans Serif",[200,300,400,500,600,700,800,900]],["Nunito Sans","Sans Serif",[200,300,400,500,600,700,800,900]],["Roboto Slab","Serif",[100,200,300,400,500,600,700,800,900]],["Rubik","Sans Serif",[300,400,500,600,700,800,900]],["Manrope","Sans Serif",[200,300,400,500,600,700,800]],["Ubuntu","Sans Serif",[300,400,500,700]],["Outfit","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Merriweather","Serif",[300,400,500,600,700,800,900]],["Kanit","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Plus Jakarta Sans","Sans Serif",[200,300,400,500,600,700,800]],["Work Sans","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Lora","Serif",[400,500,600,700]],["Noto Sans KR","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Quicksand","Sans Serif",[300,400,500,600,700]],["Figtree","Sans Serif",[300,400,500,600,700,800,900]],["JetBrains Mono","Monospace",[100,200,300,400,500,600,700,800]],["Bebas Neue","Sans Serif",[400]],["Archivo Black","Sans Serif",[400]],["Noto Sans TC","Sans Serif",[100,200,300,400,500,600,700,800,900]],["PT Sans","Sans Serif",[400,700]],["Archivo","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Mulish","Sans Serif",[200,300,400,500,600,700,800,900]],["Source Sans 3","Sans Serif",[200,300,400,500,600,700,800,900]],["Barlow","Sans Serif",[100,200,300,400,500,600,700,800,900]],["IBM Plex Sans","Sans Serif",[100,200,300,400,500,600,700]],["Jost","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Prompt","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Inconsolata","Monospace",[200,300,400,500,600,700,800,900]],["Libre Baskerville","Serif",[400,500,600,700]],["Saira","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Black Ops One","Display",[400]],["Space Grotesk","Sans Serif",[300,400,500,600,700]],["Fira Sans","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Karla","Sans Serif",[200,300,400,500,600,700,800]],["Noto Serif","Serif",[100,200,300,400,500,600,700,800,900]],["Titillium Web","Sans Serif",[200,300,400,600,700,900]],["Heebo","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Bricolage Grotesque","Sans Serif",[200,300,400,500,600,700,800]],["Cormorant Garamond","Serif",[300,400,500,600,700]],["Share Tech","Sans Serif",[400]],["Smooch Sans","Sans Serif",[100,200,300,400,500,600,700,800,900]],["IBM Plex Mono","Monospace",[100,200,300,400,500,600,700]],["Inter Tight","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Barlow Condensed","Sans Serif",[100,200,300,400,500,600,700,800,900]],["PT Serif","Serif",[400,700]],["Source Code Pro","Monospace",[200,300,400,500,600,700,800,900]],["Josefin Sans","Sans Serif",[100,200,300,400,500,600,700]],["Noto Color Emoji","Sans Serif",[400]],["Libre Franklin","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Noto Sans SC","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Anton","Sans Serif",[400]],["Dancing Script","Handwriting",[400,500,600,700]],["Public Sans","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Instrument Serif","Serif",[400]],["EB Garamond","Serif",[400,500,600,700,800]],["Fraunces","Serif",[100,200,300,400,500,600,700,800,900]],["Cairo","Sans Serif",[200,300,400,500,600,700,800,900]],["Sora","Sans Serif",[100,200,300,400,500,600,700,800]],["Noto Serif JP","Serif",[200,300,400,500,600,700,800,900]],["Geist","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Fjalla One","Sans Serif",[400]],["Rajdhani","Sans Serif",[300,400,500,600,700]],["Bitter","Serif",[100,200,300,400,500,600,700,800,900]],["Cabin","Sans Serif",[400,500,600,700]],["Changa One","Display",[400]],["Assistant","Sans Serif",[200,300,400,500,600,700,800]],["Urbanist","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Caveat","Handwriting",[400,500,600,700]],["Schibsted Grotesk","Sans Serif",[400,500,600,700,800,900]],["Mukta","Sans Serif",[200,300,400,500,600,700,800]],["Lexend","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Lobster Two","Display",[400,700]],["Roboto Flex","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Merriweather Sans","Sans Serif",[300,400,500,600,700,800]],["DM Serif Display","Serif",[400]],["Alfa Slab One","Display",[400]],["Nanum Gothic","Sans Serif",[400,700,800]],["Dosis","Sans Serif",[200,300,400,500,600,700,800]],["Source Serif 4","Serif",[200,300,400,500,600,700,800,900]],["Instrument Sans","Sans Serif",[400,500,600,700]],["Red Hat Display","Sans Serif",[300,400,500,600,700,800,900]],["Google Sans Flex","Sans Serif",[100,200,300,400,500,600,700,800,900]],["Newsreader","Serif",[200,300,400,500,600,700,800]],["Oxygen","Sans Serif",[300,400,700]]];
+const CAT_FALLBACK = { "Sans Serif": "Arial, sans-serif", "Serif": "Georgia, serif", "Monospace": "Consolas, monospace", "Handwriting": "cursive", "Display": "Impact, sans-serif" };
+TOP_FONTS.forEach(([name, cat, weights], i) => {
+  if (!FONT_LIB[name]) FONT_LIB[name] = { fb: CAT_FALLBACK[cat] || "sans-serif", weights, def: weights.includes(800) ? 800 : weights.includes(700) ? 700 : weights[weights.length - 1] };
+  FONT_LIB[name].rank = i + 1; FONT_LIB[name].cat = cat;
+});
+S.customFonts = S.customFonts || {};
+const WEIGHT_NAMES = { 100: "Thin", 200: "Extra light", 300: "Light", 400: "Regular", 500: "Medium", 600: "Semibold", 700: "Bold", 800: "Extra bold", 900: "Black" };
+function fontInfo(name) { return FONT_LIB[name] || S.customFonts[name] || { fb: "sans-serif", weights: [400, 700], def: 400 }; }
+const fontCss = name => `"${name}", ${fontInfo(name).fb}`;
+// The weight to draw with: the wanted one if the font has it, otherwise the nearest it does have.
+function pickWeight(name, want) {
+  const ws = fontInfo(name).weights, w = want || fontInfo(name).def;
+  return ws.reduce((best, x) => Math.abs(x - w) < Math.abs(best - w) ? x : best, ws[0]);
+}
+const cssLoaded = new Set();
+function fontCssUrl(name, weights) {
+  const fam = encodeURIComponent(name).replace(/%20/g, "+");
+  return `https://fonts.googleapis.com/css2?family=${fam}${weights && weights.length ? ":wght@" + weights.join(";") : ""}&display=swap`;
+}
+function loadFont(name) {
+  if (!name) return;
+  const info = fontInfo(name);
+  const ready = () => { try { Promise.all(info.weights.map(w => document.fonts.load(`${w} 40px "${name}"`))).then(() => drawNow()).catch(() => {}); } catch (e) {} };
+  if (cssLoaded.has(name)) return ready();
+  cssLoaded.add(name);
+  const link = document.createElement("link");
+  // A font with only a regular weight is requested without a weight list; the API can refuse one.
+  const plain = info.weights.length === 1 && info.weights[0] === 400;
+  link.rel = "stylesheet"; link.href = fontCssUrl(name, plain ? null : info.weights);
+  link.onload = ready; document.head.appendChild(link);
+}
+// Font files the user uploaded: register each face with the browser so the canvas can draw with it.
+const facesAdded = new Set();
+function registerLocalFonts(list) {
+  for (const fam of list || []) {
+    S.customFonts[fam.family] = { fb: "sans-serif", weights: fam.weights, def: fam.weights.includes(700) ? 700 : fam.weights[fam.weights.length - 1], local: true };
+    cssLoaded.add(fam.family); // never ask Google Fonts for these
+    for (const face of fam.faces) {
+      if (facesAdded.has(face.file) || typeof FontFace === "undefined") continue;
+      facesAdded.add(face.file);
+      try {
+        const ff = new FontFace(fam.family, `url(/fonts/${face.file})`, { weight: face.weight, style: face.style });
+        ff.load().then(f => { document.fonts.add(f); drawNow(); if (S.view === "dash") renderDash(); }).catch(() => {});
+      } catch (e) {}
+    }
+  }
+}
+async function uploadFontFiles(files) {
+  const fd = new FormData(); [...files].forEach(f => fd.append("files", f, f.name));
+  const r = await API.form("/api/fonts", fd);
+  registerLocalFonts(r.fonts);
+  return r;
+}
+function loadProjectFonts(p) { if (!p.hl) return; loadFont(p.hl.font); (p.hl.words || []).forEach(w => w && w.font && loadFont(w.font)); }
+const hlWordList = p => (p.headline || "").split(/\s+/).filter(Boolean);
+// Indexes of words that start a new line because the user pressed Enter before them.
+function hlBreaks(p) {
+  const out = new Set(); let i = 0;
+  (p.headline || "").split("\n").forEach((line, li) => {
+    const n = line.split(/\s+/).filter(Boolean).length;
+    if (n && li > 0 && i > 0) out.add(i);
+    i += n;
+  });
+  return out;
+}
+function drawHeadline(c, p, dry, o = {}) {
+  const hl = p.hl || { font: "Anton", size: 58, color: "#fff", bg: "#000", caps: true, words: [] };
+  const top = o.top ?? 128, plain = !!o.plain;
+  const raw = hlWordList(p); if (!raw.length) return o.top != null ? top : 120;
+  const brk = hlBreaks(p);
+  const toks = raw.map((w, i) => {
+    const st = (hl.words || [])[i] || {}, name = st.font || hl.font;
+    // A word with its own font starts from that font's default weight unless it has its own weight too.
+    const weight = pickWeight(name, st.weight || (st.font ? null : hl.weight));
+    const size = Math.max(6, Math.round(hl.size * (st.scale || 1) * (o.scale || 1)));
+    const font = `${weight} ${size}px ${fontCss(name)}`, text = hl.caps ? w.toUpperCase() : w;
+    c.font = font;
+    return { text, font, size, color: st.color || hl.color, width: c.measureText(text).width, brk: brk.has(i) };
+  });
+  c.font = `${pickWeight(hl.font, hl.weight)} ${Math.max(6, Math.round(hl.size * (o.scale || 1)))}px ${fontCss(hl.font)}`;
+  const space = c.measureText(" ").width, maxW = W - 150, lines = [];
+  let cur = [], cw = 0;
+  for (const t of toks) {
+    // New line where the user pressed Enter, or when the line is full.
+    if (cur.length && (t.brk || cw + space + t.width > maxW)) { lines.push(cur); cur = []; cw = 0; }
+    cw += (cur.length ? space : 0) + t.width; cur.push(t);
+  }
+  if (cur.length) lines.push(cur);
+  const shown = lines.slice(0, 4);
+  const pad = Math.round(hl.size * 0.22 * (o.scale || 1));
+  const lineH = shown.map(l => Math.max(...l.map(t => t.size)) * 1.12);
+  const lineW = shown.map(l => l.reduce((a, t) => a + t.width, 0) + space * (l.length - 1));
+  const h = lineH.reduce((a, b) => a + b, 0) + pad * 2;
+  const bw = Math.min(W - 60, Math.max(...lineW) + pad * 2.6);
+  if (dry) return top + h; // just measuring where the headline ends
+  if (hl.bg && !plain) { c.fillStyle = hl.bg; roundRect(c, (W - bw) / 2, top, bw, h, 14); c.fill(); }
+  c.textBaseline = "middle"; c.textAlign = "left";
+  let y = top + pad;
+  shown.forEach((l, li) => {
+    let x = (W - lineW[li]) / 2; const mid = y + lineH[li] / 2 + 2;
+    for (const t of l) {
+      c.font = t.font;
+      if (plain || hl.bg) { c.fillStyle = t.color; c.fillText(t.text, x, mid); }
+      else strokeFill(c, t.text, x, mid, t.color, Math.max(6, t.size * 0.14));
+      x += t.width + space;
+    }
+    y += lineH[li];
+  });
+  return top + h;
+}
+// Rank list: #1 at top. A slot fills in when its item plays; unrevealed slots show just their number.
+function drawLadder(c, p, hit, lt, top) {
+  const it = items(p), N = it.length; if (!N) return;
+  const curPlay = hit.s.kind === "item" ? it.indexOf(hit.s) : hit.s.kind === "outro" ? N : -1;
+  const bottom = Math.min(H * 0.62, (p._contentBottom || H) - 150), rowH = Math.max(28, Math.min(84, (bottom - top - 24) / N));
+  const numSize = Math.round(rowH * 0.74), labSize = Math.round(Math.min(36, rowH * 0.46));
+  // Rank position: 0 = top of the video area, 100 = bottom. Moves the whole list up or down.
+  const blockH = rowH * N + 20, room = Math.max(0, (p._contentBottom || H) - 10 - (top + 6) - blockH);
+  top = top + room * Math.max(0, Math.min(100, p.rankPos || 0)) / 100;
+  const box = { y0: top, y1: top + blockH + 6, room };
+  if (c === ctx) S.rankBox = box;
+  // Clear by default: the numbers and names carry a black outline, so they read over any clip.
+  if (p.ladderBg === "fade") {
+    const g = c.createLinearGradient(0, 0, W * 0.75, 0); g.addColorStop(0, "rgba(0,0,0,.55)"); g.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = g; c.fillRect(0, top + 6, W * 0.75, rowH * N + 16);
+  }
+  for (let r = 1; r <= N; r++) {
+    const s = it.find(x => rankOf(p, x) === r) || it[r - 1], playIdx = it.indexOf(s);
+    const y = top + 14 + (r - 0.5) * rowH, shown = playIdx <= curPlay, now = s === hit.s;
+    const pop = now ? Math.min(1, lt / 0.3) : 1;
+    c.save(); c.translate(46, y);
+    c.textBaseline = "middle"; c.textAlign = "left";
+    c.font = `${numSize}px Anton`;
+    strokeFill(c, r + ".", 0, 2, now ? "#FFD23F" : shown ? "#fff" : "rgba(255,255,255,.6)", Math.max(6, numSize * 0.16));
+    const lx = numSize * (r >= 10 ? 1.35 : 0.95);
+    c.font = `800 ${labSize}px Figtree`;
+    const lab = shown ? fitText(c, (s.label || s.text || "").toUpperCase(), W * 0.6) : "";
+    c.globalAlpha = shown ? pop : 0.55;
+    if (now) { c.translate(lx, 0); c.scale(0.85 + 0.15 * pop, 0.85 + 0.15 * pop); strokeFill(c, lab, 0, 2, "#FFD23F", 8); }
+    else strokeFill(c, lab, lx, 2, shown ? "#fff" : "rgba(255,255,255,.7)", 7);
+    c.restore();
+  }
+  return box;
+}
+function drawBigRank(c, rank, lt, top, p) {
+  const pop = Math.min(1, lt / 0.25), sc = 0.6 + 0.4 * pop;
+  const room = Math.max(0, (p._contentBottom || H) - 30 - (top + 170));
+  const y = top + 170 + room * Math.max(0, Math.min(100, p.rankPos || 0)) / 100;
+  const box = { y0: y - 160, y1: y + 20, room };
+  if (c === ctx) S.rankBox = box;
+  c.save(); c.translate(60, y); c.scale(sc, sc); c.font = "180px Anton"; c.textBaseline = "alphabetic"; c.textAlign = "left";
+  strokeFill(c, "#" + rank, 0, 0, "#FFD23F", 16); c.restore();
+  return box;
+}
+function drawGuides(c) {
+  c.save(); c.setLineDash([10, 8]); c.lineWidth = 3;
+  [[0, 0, W, 100, "Search bar"], [W - 110, H * 0.42, 110, H * 0.4, "Buttons"], [0, H - 250, W, 250, "Channel, title & music"]].forEach(([x, y, w, h, l]) => {
+    c.fillStyle = "rgba(255,80,80,.16)"; c.strokeStyle = "rgba(255,80,80,.9)";
+    c.fillRect(x, y, w, h); c.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
+    c.fillStyle = "rgb(255,130,130)"; c.font = "700 22px Figtree"; c.textAlign = "center"; c.textBaseline = "middle";
+    if (w > 200) c.fillText(l, x + w / 2, y + h / 2); else { c.save(); c.translate(x + w / 2, y + h / 2); c.rotate(-Math.PI / 2); c.fillText(l, 0, 0); c.restore(); }
+  });
+  c.restore();
+}
+function renderFrame(c, p, t, opts = {}) {
+  const hit = sceneAtIn(p, Math.min(t, totalDur(p) - 0.001));
+  c.save(); c.fillStyle = "#000"; c.fillRect(0, 0, W, H);
+  if (!hit) { c.restore(); return; }
+  const { s, start } = hit, lt = t - start, prog = Math.max(0, Math.min(1, lt / s.dur));
+  const g = c.createLinearGradient(0, 0, W, H); g.addColorStop(0, s.bg); g.addColorStop(1, "#08090c"); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const m = opts.mediaFor ? opts.mediaFor(s) : (s.mediaId && S.media[s.mediaId] ? mediaEl(s.mediaId) : null);
+  const zoom = s.zoom * (s.motion ? 1 + 0.06 * prog : 1);
+  const mode = p.videoArea || "bands", bands = mode === "bands", below = mode === "below" || bands;
+  const T = bands ? bandHeight(c, p) : 0;
+  const area = bands ? { x: 0, y: T, w: W, h: H - 2 * T } : below ? videoArea(c, p) : { x: 0, y: 0, w: W, h: H };
+  let src = null;
+  if (m && m.type === "image" && m.el.complete && m.el.naturalWidth) src = [m.el, m.el.naturalWidth, m.el.naturalHeight];
+  else if (m && m.type === "video" && m.el.readyState >= 2) src = [m.el, m.el.videoWidth, m.el.videoHeight];
+  const fitMode = below ? (p.videoFit || "fill") : "fill";
+  if (src && below && fitMode === "fit") drawBlurredBackdrop(c, ...src);
+  if (src) drawMedia(c, ...src, zoom, s.panX, area, fitMode, s.panY || 0, mode === "below");
+  else if (!opts.clean) {
+    if (below) { c.strokeStyle = "rgba(255,255,255,.25)"; c.setLineDash([12, 10]); c.lineWidth = 3; c.strokeRect(area.x + 20, area.y + 6, area.w - 40, area.h - 26); c.setLineDash([]); }
+    c.fillStyle = "rgba(255,255,255,.3)"; c.font = "600 26px Figtree"; c.textAlign = "center"; c.textBaseline = "middle";
+    c.fillText("Add a clip to this " + (s.kind === "item" ? "rank" : s.kind), W / 2, below ? area.y + area.h * 0.55 : H * 0.78);
+  }
+  let top;
+  if (bands) {
+    c.fillStyle = p.bandColor || "#000"; c.fillRect(0, 0, W, T); c.fillRect(0, H - T, W, T);
+    const hp = bandHeadlinePlacement(c, p, T);
+    drawHeadline(c, p, false, { top: hp.top, plain: true, scale: hp.scale }); top = T;
+  } else {
+    const vg = c.createLinearGradient(0, H * 0.5, 0, H); vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,.55)"); c.fillStyle = vg; c.fillRect(0, H * 0.5, W, H * 0.5);
+    top = drawHeadline(c, p);
+  }
+  p._contentBottom = bands ? H - T : H;
+  let rb = null;
+  if (p.layout === "ladder") rb = drawLadder(c, p, hit, lt, top);
+  else if (s.kind === "item") rb = drawBigRank(c, rankOf(p, s), lt, top, p);
+  // Captions move out of the way when the rank list is moved over them.
+  let capY = bands ? Math.min(H * 0.7, H - T - 80) : H * 0.7;
+  const cBottom = bands ? H - T : H;
+  if (rb && capY > rb.y0 - 70 && capY < rb.y1 + 70) capY = cBottom - rb.y1 >= 150 ? rb.y1 + 75 : Math.max(top + 70, rb.y0 - 75);
+  drawCaption(c, s.text, prog, p.captionStyle, capY);
+  if (p.flash && lt < 0.12 && start > 0) { c.fillStyle = `rgba(255,255,255,${0.7 * (1 - lt / 0.12)})`; c.fillRect(0, 0, W, H); }
+  if (opts.guides) drawGuides(c);
+  c.restore();
+}
+function drawNow() { if (S.cur && S.view === "edit") { renderFrame(ctx, S.cur, S.t, { clean: S.exporting, guides: S.guides && !S.exporting }); updateClock(); } }
+
+// ---------- playback ----------
+let raf = 0, last = 0, curIdx = -1;
+function stopVideos(except) { Object.values(els).forEach(x => { if (x.type === "video" && x.el !== except && !x.el.paused) x.el.pause(); }); }
+function music() { const mu = S.cur.music; return mu && S.media[mu.mediaId] ? mediaEl(mu.mediaId) : null; }
+function play() {
+  if (S.playing || !S.cur.scenes.length) return;
+  AU.init();
+  if (S.t >= totalDur() - 0.05) S.t = 0;
+  S.playing = true; last = performance.now(); curIdx = -1;
+  const mu = music(); if (mu) { mu.el.currentTime = mu.el.duration ? S.t % mu.el.duration : S.t; if (mu.gain) mu.gain.gain.value = S.cur.music.vol; else mu.el.volume = S.cur.music.vol; mu.el.play().catch(() => {}); }
+  raf = requestAnimationFrame(tick); updateTransport();
+}
+function pause() {
+  S.playing = false; cancelAnimationFrame(raf); stopVideos(null);
+  const mu = music(); if (mu) mu.el.pause();
+  updateTransport(); still();
+}
+function tick(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now; S.t += dt;
+  const T = totalDur();
+  if (S.t >= T) { S.t = T; drawNow(); if (S.exporting) return finishExport(); pause(); return; }
+  const hit = sceneAt(S.t);
+  if (hit.i !== curIdx) {
+    curIdx = hit.i;
+    const m = hit.s.mediaId && S.media[hit.s.mediaId] ? mediaEl(hit.s.mediaId) : null;
+    stopVideos(m && m.el);
+    if (m && m.type === "video") { m.el.currentTime = hit.s.trim + (S.t - hit.start); m.el.play().catch(() => {}); }
+    if (!S.exporting && S.sel !== hit.i) { S.sel = hit.i; renderInspector(); markSel(); }
+  }
+  drawNow(); movePlayhead();
+  if (S.exporting) updateExport(S.t / T);
+  raf = requestAnimationFrame(tick);
+}
+function still() {
+  if (!S.cur || !S.cur.scenes.length) return drawNow();
+  const hit = sceneAt(Math.min(S.t, totalDur() - 0.001)), m = hit.s.mediaId && S.media[hit.s.mediaId] ? mediaEl(hit.s.mediaId) : null;
+  if (m && m.type === "video") { const target = hit.s.trim + (S.t - hit.start); if (Math.abs(m.el.currentTime - target) > 0.04) { m.el.addEventListener("seeked", drawNow, { once: true }); m.el.currentTime = target; } }
+  drawNow(); movePlayhead();
+}
+function seek(t) { S.t = Math.max(0, Math.min(totalDur(), t)); if (S.playing) { curIdx = -1; const mu = music(); if (mu && mu.el.duration) mu.el.currentTime = S.t % mu.el.duration; } else still(); }
+
+// ---------- export ----------
+// Every frame is drawn on its own (not recorded in real time), so the result has exact timing
+// and full 1080p quality, and it keeps going when this tab is in the background.
+const shortPath = p => String(p || "").replace(/^\/home\/[^/]+/, "~").replace(/^[A-Za-z]:\\Users\\[^\\]+/, "~");
+function updateExport() {}
+function finishExport() { S.exporting = false; }
+let EXP = null;
+function startExport() {
+  if (!items(S.cur).length) return toast("Add at least one rank first.");
+  if (S.playing) pause();
+  const p = S.cur, title = (p.meta && p.meta.title || "").trim(), def = p.exportName || title || p.name || "ranking";
+  const box = modal(`<h2>Export video</h2>
+    <div class="field"><label for="ex-name">File name</label>
+      <div class="copyrow"><input type="text" id="ex-name" value="${esc(def)}" maxlength="120" spellcheck="false"><span class="card-meta" style="padding-top:10px">.mp4</span></div>
+      <div class="row">${title ? '<button class="btn sm ghost" data-exn="title">Use the YouTube title</button>' : ""}<button class="btn sm ghost" data-exn="name">Use the project name</button></div></div>
+    <div class="row">
+      <div class="field"><label for="ex-res">Quality</label><select id="ex-res"><option value="1080" ${p.exportRes !== 720 ? "selected" : ""}>1080 × 1920 (best for Shorts)</option><option value="720" ${p.exportRes === 720 ? "selected" : ""}>720 × 1280 (smaller file)</option></select></div>
+      <div class="field"><label for="ex-fps">Frame rate</label><select id="ex-fps"><option value="30" ${p.exportFps !== 60 ? "selected" : ""}>30 fps</option><option value="60" ${p.exportFps === 60 ? "selected" : ""}>60 fps (smoother, twice as long)</option></select></div></div>
+    <p class="hint">Saves to <code>${esc(shortPath(S.status.exportDir) || "Videos\\Clipdeck")}</code>. You can switch to another tab or window while it works; just leave Clipdeck open until it says it's done.</p>
+    <div class="row" style="justify-content:flex-end"><button class="btn" id="ex-close">Cancel</button><button class="btn primary" id="ex-go">${I.out}Export</button></div>`);
+  const q = s => box.querySelector(s);
+  box.querySelectorAll("[data-exn]").forEach(b => b.onclick = () => { q("#ex-name").value = b.dataset.exn === "title" ? title : p.name; q("#ex-name").focus(); });
+  q("#ex-close").onclick = closeModal;
+  q("#ex-name").onkeydown = e => { if (e.key === "Enter") q("#ex-go").click(); };
+  q("#ex-go").onclick = () => {
+    const filename = q("#ex-name").value.replace(/[<>:"/\\|?*\x00-\x1f]/g, "").trim() || "ranking";
+    p.exportName = filename; p.exportRes = +q("#ex-res").value; p.exportFps = +q("#ex-fps").value; touch(p);
+    runExport(p, { filename, width: p.exportRes, fps: p.exportFps });
+  };
+  setTimeout(() => { const n = q("#ex-name"); if (n) { n.focus(); n.select(); } }, 30);
+}
+function waitFor(el, ev, ms = 8000) {
+  return new Promise(res => { const to = setTimeout(res, ms); el.addEventListener(ev, () => { clearTimeout(to); res(); }, { once: true }); });
+}
+async function runExport(p, o) {
+  const fmtT = s => s < 60 ? Math.round(s) + " s" : Math.floor(s / 60) + " min " + Math.round(s % 60) + " s";
+  const box = modal(`<h2>Exporting</h2><div class="status" id="ex-step">Getting the clips ready…</div>
+    <div class="meter"><i id="ex-bar"></i></div><div class="card-meta" id="ex-st">&nbsp;</div>
+    <p class="hint">You can use other tabs or windows while this runs.</p>
+    <div class="row"><button class="btn" id="ex-cancel">Cancel</button></div>`);
+  const q = s => box.querySelector(s), step = t => { const e = q("#ex-step"); if (e) e.textContent = t; };
+  const bar = f => { const b = q("#ex-bar"); if (b) b.style.width = (f * 100).toFixed(1) + "%"; };
+  const job = EXP = { cancelled: false, id: null, els: [] };
+  const oldTitle = document.title;
+  q("#ex-cancel").onclick = async () => { job.cancelled = true; if (job.id) API.post(`/api/export/${job.id}/cancel`).catch(() => {}); };
+  const cleanup = () => { job.els.forEach(v => { v.removeAttribute("src"); v.load(); }); document.title = oldTitle; if (EXP === job) EXP = null; };
+  try {
+    // 1. Starts and a keyframe-every-frame copy of each clip, so any frame can be shown instantly.
+    let acc = 0; const plan = p.scenes.map(s => { const r = { s, start: acc }; acc += s.dur; return r; });
+    const total = acc, fps = o.fps, N = Math.max(1, Math.ceil(total * fps));
+    const media = new Map(), vids = plan.filter(x => x.s.mediaId && S.media[x.s.mediaId] && S.media[x.s.mediaId].type === "video");
+    for (let i = 0; i < vids.length; i++) {
+      if (job.cancelled) throw { cancelled: true };
+      step(`Getting the clips ready… ${i + 1} of ${vids.length}`); bar(i / Math.max(1, vids.length) * 0.08);
+      const s = vids[i].s, r = await API.post("/api/proxy", { mediaId: s.mediaId, trim: s.trim || 0, dur: s.dur });
+      const v = document.createElement("video"); v.muted = true; v.preload = "auto"; v.playsInline = true; v.src = r.url; job.els.push(v);
+      if (v.readyState < 2) await waitFor(v, "loadeddata", 20000);
+      if (v.readyState < 2) throw { message: `Clip on ${s.kind === "item" ? "#" + rankOf(p, s) : s.kind} couldn't be loaded for export.` };
+      media.set(s.id, { type: "video", el: v });
+    }
+    for (const x of plan) {
+      const m = x.s.mediaId && S.media[x.s.mediaId];
+      if (m && m.type === "image") { const im = mediaEl(m.id); if (!im.el.complete) await waitFor(im.el, "load"); media.set(x.s.id, im); }
+    }
+    loadProjectFonts(p); await document.fonts.ready;
+    // 2. Start the encoder.
+    if (job.cancelled) throw { cancelled: true };
+    const outW = o.width >= 1080 ? 1080 : 720, sc = outW / W;
+    const cv = document.createElement("canvas"); cv.width = outW; cv.height = Math.round(H * sc);
+    const c = cv.getContext("2d");
+    const startRes = await API.post("/api/export/start", {
+      fps, width: outW, filename: o.filename, total,
+      scenes: plan.map(x => ({ mediaId: x.s.mediaId, trim: x.s.trim || 0, dur: x.s.dur, start: x.start })),
+      music: p.music && S.media[p.music.mediaId] ? { mediaId: p.music.mediaId, vol: p.music.vol } : null
+    });
+    job.id = startRes.id;
+    // 3. Draw, compress and send every frame.
+    const t0 = performance.now(); let batch = [], sent = 0;
+    const flush = async () => {
+      if (!batch.length) return;
+      const body = new Blob(batch, { type: "application/octet-stream" }), n = batch.length; batch = [];
+      await fetch(`/api/export/${job.id}/frames`, { method: "POST", headers: { "X-Clipdeck": "1", "X-Frames": String(n) }, body })
+        .then(async r => { if (!r.ok) { let d = null; try { d = await r.json(); } catch (e) {} throw { message: (d && d.detail) || "The encoder stopped." }; } });
+      sent += n;
+    };
+    for (let f = 0; f < N; f++) {
+      if (job.cancelled) throw { cancelled: true };
+      const t = Math.min(f / fps, total - 0.0005), hit = sceneAtIn(p, t), m = media.get(hit.s.id);
+      if (m && m.type === "video") {
+        const v = m.el, target = Math.max(0, Math.min((v.duration || hit.s.dur) - 0.02, t - hit.start));
+        if (Math.abs(v.currentTime - target) > 0.0005) { const done = waitFor(v, "seeked", 5000); v.currentTime = target; await done; }
+      }
+      c.setTransform(sc, 0, 0, sc, 0, 0);
+      renderFrame(c, p, t, { clean: true, mediaFor: s => media.get(s.id) || null });
+      batch.push(await new Promise(res => cv.toBlob(res, "image/jpeg", 0.93)));
+      if (batch.length >= 12 || f === N - 1) {
+        await flush();
+        const frac = (f + 1) / N, el = (performance.now() - t0) / 1000, left = el / frac - el;
+        bar(0.08 + frac * 0.86);
+        step(`Drawing frames… ${Math.round(frac * 100)}%`);
+        const st = q("#ex-st"); if (st) st.textContent = `${f + 1} of ${N} frames · about ${fmtT(left)} left`;
+        document.title = `(${Math.round(frac * 100)}%) Exporting · Clipdeck`;
+      }
+    }
+    // 4. Finish: encode, add sound from the original clips and music.
+    step("Adding sound and saving the MP4…"); bar(0.96); document.title = "Saving · Clipdeck";
+    const r = await API.post(`/api/export/${job.id}/finish`);
+    job.id = null; cleanup(); bar(1);
+    showExportResult(r);
+  } catch (e) {
+    if (job.id) API.post(`/api/export/${job.id}/cancel`).catch(() => {});
+    cleanup();
+    if (e && e.cancelled) { closeModal(); toast("Export cancelled"); return; }
+    const st = q("#ex-step"); if (st) { st.className = "status err"; st.textContent = (e && e.message) || "Export failed."; }
+    const cb = q("#ex-cancel"); if (cb) { cb.textContent = "Close"; cb.onclick = closeModal; }
+  }
+}
+function showExportResult(r) {
+  const box = modal(`<h2>Your ranking is ready</h2><video src="${r.url}" controls playsinline></video>
+    <div class="field"><label>Saved as</label><code>${esc(shortPath(r.path))}</code></div>
+    <div class="card-meta">${(r.size / 1048576).toFixed(1)} MB · ${fmt(r.duration || 0)}</div>
+    <div class="row"><button class="btn primary" id="ex-open">Open folder</button><button class="btn" id="ex-done">Close</button></div>`);
+  box.querySelector("#ex-open").onclick = () => API.post("/api/open-folder", { path: r.path }).catch(e => toast(e.message));
+  box.querySelector("#ex-done").onclick = closeModal;
+  document.title = "✓ Export done · Clipdeck";
+  setTimeout(() => { if (document.title.startsWith("✓")) document.title = "Clipdeck Studio"; }, 8000);
+}
+
+// ---------- Claude ----------
+async function ai(prompt, tier) {
+  if (!S.status.ai) throw { code: 412, message: "Add your Anthropic API key in Settings to use AI features." };
+  return (await API.post("/api/ai", { prompt, tier, json: true })).data;
+}
+function aiError(e) { return (e && e.message) || "Claude couldn't finish that. Try again in a moment."; }
+async function aiRanking(topic, n) {
+  const prompt = `You write scripts for vertical YouTube Shorts ranking videos (25-55 seconds) in the sports and entertainment niche.
+Topic: ${topic}. Rank exactly ${n} items.
+Return ONLY a JSON object, no prose:
+{"name": "project name, max 6 words",
+ "headline": "on-screen headline in capitals, max 5 words, like TOP 5 KEEPER BLUNDERS",
+ "hook": {"text": "hook caption that teases #1, max 10 words", "dur": 2.5},
+ "items": [{"label": "name for the on-screen rank list, max 4 words", "text": "caption, max 11 words, punchy and spoken", "dur": seconds between 3 and 6}],
+ "outro": {"text": "comment-bait outro, max 10 words", "dur": 2.5},
+ "title": "YouTube title under 70 characters", "description": "1-2 sentences", "hashtags": ["5 tags without #"]}
+"items" must have exactly ${n} entries ordered from #${n} (least impressive) to #1 (most impressive); each one should top the last.
+Prefer well-known real moments; do not invent quotes, scores or dates.`;
+  const d = await ai(prompt, "default");
+  if (!d || !Array.isArray(d.items) || !d.items.length) throw { message: "Claude's answer was missing the ranked items. Try again." };
+  return d;
+}
+async function aiIdeas(niche) {
+  return ai(`Suggest 6 ranking-video topics for YouTube Shorts in this niche: ${niche}. Mix evergreen and debate-starting topics. Return ONLY JSON: {"ideas":[{"topic":"topic phrased as a ranking, under 9 words","n":3|4|5|6}]}`, "quick");
+}
+async function aiMeta() {
+  const p = S.cur, lines = p.scenes.map(s => s.kind === "item" ? `#${rankOf(p, s)} ${s.label}: ${s.text}` : `(${s.kind}) ${s.text}`).join("\n");
+  return ai(`Write YouTube Shorts metadata for this ranking video. Headline: ${p.headline}\nScenes in play order:\n${lines}\n\nReturn ONLY JSON: {"titles": ["3 alternative titles under 70 characters, curiosity-driven, no false claims"], "description": "1-2 sentences ending with a question", "hashtags": ["6 tags without #, include shorts"]}`, "quick");
+}
+
+// ---------- UI helpers ----------
+const main = document.getElementById("main");
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+let toastT = 0;
+function toast(msg) { let t = document.querySelector(".toast"); if (!t) { t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); } t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2200); }
+function modal(html) { closeModal(); const m = document.createElement("div"); m.className = "modal"; m.innerHTML = `<div class="modal-box" role="dialog" aria-modal="true">${html}</div>`; document.body.appendChild(m); return m; }
+function closeModal() { document.querySelectorAll(".modal").forEach(m => { if (m._cleanup) m._cleanup(); m.remove(); }); }
+async function copy(text, btn) { try { await navigator.clipboard.writeText(text); toast("Copied"); } catch (e) { const ta = btn.parentElement.querySelector("textarea,input"); if (ta) { ta.focus(); ta.select(); } toast("Press Ctrl+C to copy"); } }
+const I = {
+  play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4.5" width="4" height="15" rx="1"/><rect x="14" y="4.5" width="4" height="15" rx="1"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>',
+  spark: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8zM19 15l.9 2.6 2.6.9-2.6.9L19 22l-.9-2.6-2.6-.9 2.6-.9z"/></svg>',
+  up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>',
+  out: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12M6 10l6 6 6-6M4 20h16"/></svg>',
+  note: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="26" height="26"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
+  ladder: '<svg viewBox="0 0 44 60" fill="none"><rect x="1" y="1" width="42" height="58" rx="5" stroke="currentColor" stroke-opacity=".4"/><rect x="8" y="5" width="28" height="6" rx="1.5" fill="currentColor"/><g fill="#FFD23F"><rect x="6" y="16" width="4" height="4"/><rect x="6" y="23" width="4" height="4"/><rect x="6" y="30" width="4" height="4"/></g><g fill="currentColor" fill-opacity=".7"><rect x="12" y="16" width="16" height="4" rx="1"/><rect x="12" y="23" width="12" height="4" rx="1"/><rect x="12" y="30" width="14" height="4" rx="1"/></g><rect x="8" y="44" width="28" height="4" rx="1" fill="currentColor" fill-opacity=".5"/></svg>',
+  big: '<svg viewBox="0 0 44 60" fill="none"><rect x="1" y="1" width="42" height="58" rx="5" stroke="currentColor" stroke-opacity=".4"/><rect x="8" y="5" width="28" height="6" rx="1.5" fill="currentColor"/><text x="6" y="31" font-family="Anton,Impact" font-size="17" fill="#FFD23F">#1</text><rect x="8" y="44" width="28" height="4" rx="1" fill="currentColor" fill-opacity=".5"/></svg>'
+};
+
+// ---------- views ----------
+function setView(v) {
+  if (S.playing) pause();
+  S.view = v;
+  document.getElementById("nav-dash").setAttribute("aria-current", v === "dash" ? "page" : "false");
+  document.getElementById("nav-set").setAttribute("aria-current", v === "settings" ? "page" : "false");
+  const ne = document.getElementById("nav-edit"); ne.disabled = !S.cur; ne.setAttribute("aria-current", v === "edit" ? "page" : "false");
+  render();
+}
+function render() { if (S.view === "dash") renderDash(); else if (S.view === "settings") renderSettings(); else renderEditor(); }
+
+function renderDash() {
+  const ps = [...S.projects].sort((a, b) => b.updated - a.updated);
+  const secs = ps.reduce((a, p) => a + totalDur(p), 0), ranked = ps.reduce((a, p) => a + items(p).length, 0);
+  main.innerHTML = `<div class="view"><div class="dash">
+    <header style="display:grid;gap:8px"><div class="eyebrow">Ranking Shorts studio</div><h1>Count it down to #1</h1>
+      <p class="lede">Every project is a ranking: a hook, your ranked items with an on-screen rank list that fills in as you go, and an outro that gets comments.</p></header>
+    <section class="compose" aria-labelledby="ai-h">
+      <div class="sect-h"><h2 id="ai-h">Write a ranking with Claude</h2>${S.status.ai ? '<span class="note">Uses your Anthropic API key</span>' : '<button class="btn sm ghost" id="go-set">Set up AI in Settings</button>'}</div>
+      <div class="compose-row">
+        <div class="field"><label for="ai-topic">What are you ranking?</label><input type="text" id="ai-topic" placeholder="e.g. worst penalty misses in World Cup history" value="worst penalty misses in World Cup history"></div>
+        <div class="field"><label for="ai-n">Items</label><select id="ai-n"><option>3</option><option>4</option><option selected>5</option><option>6</option></select></div>
+        <div class="field"><label for="ai-order">Order</label><select id="ai-order"><option value="down">Countdown to #1</option><option value="up">Start at #1</option><option value="shuffle">Shuffle (random order)</option></select></div>
+        <button class="btn primary" id="ai-go">${I.spark}Generate ranking</button>
+      </div>
+      <div class="status" id="ai-st" aria-live="polite"></div>
+      <div class="ideas">
+        <div class="ideas-row"><div class="field"><label for="ai-niche">Need a topic? Your niche</label><input type="text" id="ai-niche" value="football fails and funny sports moments"></div><button class="btn" id="ideas-go">Suggest topics</button></div>
+        <div class="chips" id="chips"></div>
+      </div>
+      <div class="row"><button class="btn" id="new-blank">${I.plus}Blank ranking</button><span class="note">Claude drafts names, captions and timing. Check facts before you post.</span></div>
+    </section>
+    <section style="display:grid;gap:16px">
+      <div class="sect-h"><h2>Your rankings</h2><div class="stats"><div class="stat"><b>${ps.length}</b><span>rankings</span></div><div class="stat"><b>${ranked}</b><span>ranked items</span></div><div class="stat"><b>${fmt(secs)}</b><span>total runtime</span></div></div></div>
+      ${ps.length ? `<div class="grid">${ps.map(p => `<div class="card"><button class="card-open" data-open="${p.id}"><div class="thumb"><canvas width="${W}" height="${H}" data-thumb="${p.id}"></canvas>${p.example ? '<span class="tag">Example</span>' : ""}</div>
+        <div class="card-body"><h3>${esc(p.name)}</h3><div class="card-meta">Top ${items(p).length} · ${fmt(totalDur(p))} · ${new Date(p.updated).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</div></div></button>
+        <div class="card-acts"><button class="btn sm ghost" data-dup="${p.id}">Duplicate</button><button class="btn sm ghost danger" data-del="${p.id}">Delete</button></div></div>`).join("")}</div>`
+      : `<p class="empty">No rankings yet. Generate one above or start blank.</p>`}
+    </section></div></div>`;
+  main.querySelectorAll("[data-thumb]").forEach(cv => {
+    const p = S.projects.find(x => x.id === cv.dataset.thumb), it = items(p);
+    const target = it[Math.max(0, it.length - 2)] || p.scenes[0]; if (!target) return;
+    const i = p.scenes.indexOf(target), at = p.scenes.slice(0, i).reduce((a, s) => a + s.dur, 0) + target.dur * 0.7;
+    renderFrame(cv.getContext("2d"), p, at, { clean: true });
+  });
+  main.querySelectorAll("[data-open]").forEach(b => b.onclick = () => openProject(b.dataset.open));
+  main.querySelectorAll("[data-dup]").forEach(b => b.onclick = () => duplicateProject(b.dataset.dup));
+  main.querySelectorAll("[data-del]").forEach(b => b.onclick = async () => {
+    if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Delete for good?"; setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = "Delete"; } }, 3500); return; }
+    const id = b.dataset.del;
+    try { clearTimeout(saveTimers[id]); delete saveTimers[id]; await API.del(`/api/projects/${id}`); S.projects = S.projects.filter(x => x.id !== id); if (S.cur && S.cur.id === id) S.cur = null; toast("Deleted"); renderDash(); }
+    catch (e) { toast(e.message); }
+  });
+  const gs = document.getElementById("go-set"); if (gs) gs.onclick = () => setView("settings");
+  document.getElementById("new-blank").onclick = () => newProject();
+  document.getElementById("ideas-go").onclick = async ev => {
+    const btn = ev.currentTarget, chips = document.getElementById("chips"), niche = document.getElementById("ai-niche").value.trim() || "sports";
+    btn.disabled = true; chips.innerHTML = `<span class="status">Thinking of topics…</span>`;
+    try {
+      const d = await aiIdeas(niche);
+      chips.innerHTML = (d.ideas || []).map(x => `<button class="chip" data-topic="${esc(x.topic)}" data-n="${Math.min(MAX_RANKS, +x.n || 5)}"><b>TOP ${Math.min(MAX_RANKS, +x.n || 5)}</b>${esc(x.topic)}</button>`).join("") || `<span class="status">No ideas came back. Try a different niche.</span>`;
+      chips.querySelectorAll("[data-topic]").forEach(c => c.onclick = () => { document.getElementById("ai-topic").value = c.dataset.topic; const sel = document.getElementById("ai-n"); if ([...sel.options].some(o => o.value === c.dataset.n)) sel.value = c.dataset.n; document.getElementById("ai-topic").focus(); });
+    } catch (e) { chips.innerHTML = `<span class="status err">${esc(aiError(e))}</span>`; }
+    btn.disabled = false;
+  };
+  document.getElementById("ai-go").onclick = async ev => {
+    const btn = ev.currentTarget, st = document.getElementById("ai-st");
+    const topic = document.getElementById("ai-topic").value.trim(); if (!topic) { st.textContent = "Type what you're ranking first."; st.className = "status err"; return; }
+    const n = +document.getElementById("ai-n").value, order = document.getElementById("ai-order").value;
+    btn.disabled = true; st.className = "status"; let secs = 0; st.textContent = "Claude is writing your ranking…";
+    const iv = setInterval(() => { secs++; st.textContent = `Claude is writing your ranking… ${secs}s`; }, 1000);
+    try {
+      const d = await aiRanking(topic, n);
+      const dur = (x, lo, hi, def) => Math.max(lo, Math.min(hi, +x || def));
+      const its = d.items.slice(0, n).map((x, i) => mk("item", String(x.text || ""), dur(x.dur, 2, 8, 4), BGS[i % BGS.length], String(x.label || "")));
+      its.forEach((s, i) => s.rank = its.length - i); // Claude lists them from #N down to #1
+      if (order === "up") its.reverse();
+      const p = { id: uid(), name: d.name || topic, headline: String(d.headline || "").toUpperCase(), order, layout: "ladder", updated: Date.now(), captionStyle: "punch", flash: true, music: null,
+        scenes: [...(d.hook && d.hook.text ? [mk("hook", String(d.hook.text), dur(d.hook.dur, 1.5, 4, 2.5), BGS[5])] : []), ...its, ...(d.outro && d.outro.text ? [mk("outro", String(d.outro.text), dur(d.outro.dur, 1.5, 4, 2.5), BGS[4])] : [])],
+        meta: { title: d.title || "", description: d.description || "", hashtags: (d.hashtags || []).join(", ") }, keepTop: true };
+      normalize(p);
+      if (order === "shuffle") setPlayOrder(p, shuffledItems(p));
+      await saveProject(p, true); S.projects.push(p); await openProject(p.id); toast("Ranking ready. Paste a link or add a clip for each rank.");
+    } catch (e) { st.className = "status err"; st.textContent = aiError(e); btn.disabled = false; }
+    clearInterval(iv);
+  };
+}
+function blank() {
+  return { id: uid(), name: "Untitled ranking", headline: "TOP 5", order: "down", layout: "ladder", updated: Date.now(), captionStyle: "punch", flash: true, music: null,
+    scenes: [mk("hook", "Wait for number one", 2.5, BGS[5]), ...[0, 1, 2, 3, 4].map(i => mk("item", "", 4, BGS[i])), mk("outro", "Agree with the list? Comment below", 2.5, BGS[4])],
+    meta: { title: "", description: "", hashtags: "" } };
+}
+async function newProject() { const p = normalize(blank()); await saveProject(p, true); S.projects.push(p); await openProject(p.id); S.sel = 1; S.t = sceneStart(1) + 0.01; renderInspector(); markSel(); still(); }
+async function openProject(id) {
+  const p = S.projects.find(x => x.id === id); if (!p) return;
+  try { (await API.get(`/api/media?project=${encodeURIComponent(id)}`)).forEach(m => S.media[m.id] = m); } catch (e) { toast(e.message); }
+  normalize(p); // fills in settings added in newer versions (headline style, rank list, shuffle)
+  S.cur = p; S.t = 0; S.sel = 0; setView("edit");
+}
+async function duplicateProject(id) {
+  const src = S.projects.find(p => p.id === id); if (!src) return;
+  const p = JSON.parse(JSON.stringify(src));
+  p.id = uid(); p.name = src.name + " (copy)"; p.updated = Date.now(); delete p.example; p.scenes.forEach(s => s.id = uid());
+  try {
+    const map = await API.post(`/api/projects/${p.id}/copy-media`, { from: src.id });
+    Object.values(map).forEach(m => S.media[m.id] = m);
+    p.scenes.forEach(s => { if (s.mediaId) s.mediaId = (map[s.mediaId] || {}).id || null; });
+    if (p.music) { p.music.mediaId = (map[p.music.mediaId] || {}).id; if (!p.music.mediaId) p.music = null; }
+    await saveProject(p, true); S.projects.push(p); renderDash(); toast("Duplicated");
+  } catch (e) { toast(e.message); }
+}
+
+// ---------- settings ----------
+async function renderSettings() {
+  try { S.status = await API.get("/api/status"); } catch (e) {}
+  try { S.lib = await API.get("/api/library?limit=1"); } catch (e) { S.lib = null; }
+  try { S.upd = await API.get("/api/updates"); } catch (e) { S.upd = null; }
+  const st = S.status, br = ["firefox", "chrome", "chromium", "brave", "edge"];
+  main.innerHTML = `<div class="view"><div class="dash settings">
+    <header style="display:grid;gap:8px"><div class="eyebrow">Settings</div><h1>This computer</h1></header>
+    <section class="set-card"><div class="set-h"><h2>Downloads from links</h2><span class="pill ${st.ytdlp ? "ok" : "bad"}">${st.ytdlp ? "yt-dlp " + esc(st.ytdlp) : "yt-dlp missing"}</span></div>
+      <p class="hint">TikTok, YouTube, Instagram and Facebook change their sites often. If links stop downloading, update yt-dlp first.</p>
+      ${st.impersonate === false ? '<p class="hint" style="color:var(--danger)">Browser imitation is missing, so TikTok downloads will fail. Press Update yt-dlp to add it.</p>' : ""}
+      <div class="row"><button class="btn" id="upd">Update yt-dlp</button><span class="status" id="upd-st" aria-live="polite"></span></div>
+      <div class="field"><label for="dbr">Default sign-in</label>
+        <select id="dbr"><option value="">None</option>${br.map(b => `<option value="${b}" ${st.browser === b ? "selected" : ""}>Use my ${b[0].toUpperCase() + b.slice(1)} sign-in</option>`).join("")}</select>
+        <span class="hint">Instagram, Facebook and some YouTube videos only download when yt-dlp can borrow your sign-in from a browser on this computer. ${st.platform === "windows" ? "On Windows, Chrome and Edge lock their sign-ins, so pick Firefox and stay signed in there." : "Firefox works most reliably; close Chrome first if you pick it."} A ranking can override this in its Links tab.</span></div>
+    </section>
+    <section class="set-card"><div class="set-h"><h2>Video tools</h2><span class="pill ${st.ffmpeg ? "ok" : "bad"}">${st.ffmpeg ? "ffmpeg ready" : "ffmpeg missing"}</span></div>
+      ${st.ffmpeg ? "" : `<p class="hint">${st.platform === "windows" ? "Run the Clipdeck setup file again to restore it." : 'Install it in a terminal with <code>sudo apt install ffmpeg</code>, then restart Clipdeck.'}</p>`}
+      <div class="field"><label for="exd">Save exported videos to</label><div class="copyrow"><input type="text" id="exd" value="${esc(st.exportDir || "")}"><button class="btn sm" id="exd-save">Save</button><button class="btn sm" id="exd-open">Open</button></div></div>
+      <p class="hint">Projects and clips live in <code>${esc(shortPath(st.dataDir))}</code>. Back up that folder to keep your work.</p>
+    </section>
+    <section class="set-card"><div class="set-h"><h2>Claude for writing</h2><span class="pill ${st.ai ? "ok" : "bad"}">${st.ai ? "Connected" : "Not set up"}</span></div>
+      <p class="hint">Ranking scripts, topic ideas and titles use the Anthropic API with your own key, billed by Anthropic per use. A ranking script costs roughly one US cent. Create a key in the Claude Console at platform.claude.com.</p>
+      ${st.aiFromEnv ? '<p class="hint">Using the key from the ANTHROPIC_API_KEY environment variable.</p>' : `<div class="field"><label for="key">API key</label><div class="copyrow"><input type="password" id="key" autocomplete="off" placeholder="${st.ai ? "Saved. Paste a new key to replace it" : "sk-ant-…"}"><button class="btn sm primary" id="key-save">Save</button>${st.ai ? '<button class="btn sm danger" id="key-rm">Remove</button>' : ""}</div><span class="hint">Stored only on this computer, in <code>${esc(shortPath(st.configPath))}</code>.</span></div>`}
+      <div class="row"><button class="btn sm" id="key-test" ${st.ai ? "" : "disabled"}>Test the connection</button><span class="status" id="key-st" aria-live="polite"></span></div>
+    </section>
+    <section class="set-card"><div class="set-h"><h2>Your fonts</h2></div>
+      <div class="field"><label for="flib">Downloaded Google Fonts folder</label><div class="copyrow"><input type="text" id="flib" value="${esc(S.lib && S.lib.path || "")}" placeholder="e.g. C:\\Users\\you\\Downloads\\fonts-main\\fonts-main"><button class="btn sm" id="flib-save">Save</button></div>
+        <span class="hint">${S.lib && S.lib.found ? `Found ${S.lib.count.toLocaleString()} fonts. Search them in a ranking's Look tab under Add more fonts.` : "The folder that contains ofl, apache and ufl. Clipdeck looks in Downloads automatically."}</span></div>
+      ${Object.keys(S.customFonts).length ? `<div class="sect">${Object.entries(S.customFonts).sort((a, b) => a[0].localeCompare(b[0])).map(([n, f]) => `<div class="row" style="justify-content:space-between"><span style="font-family:'${esc(n)}',sans-serif;font-size:18px;font-weight:${f.def}">${esc(n)}</span><span class="row"><span class="card-meta">${f.local ? "font file" : "Google Fonts"} · ${f.weights.map(w => WEIGHT_NAMES[w] || w).join(", ")}</span><button class="btn sm ghost danger" data-rmfont="${esc(n)}">Remove</button></span></div>`).join("")}</div>` : '<p class="hint">Fonts you upload or add from Google Fonts show up here. Add them in a ranking\'s Look tab.</p>'}
+    </section>
+    <section class="set-card"><div class="set-h"><h2>Updates</h2><span class="pill ${S.upd && S.upd.error ? "bad" : "ok"}">${S.upd && S.upd.current && S.upd.current.version ? "Version " + esc(S.upd.current.version) : "Version unknown"}</span></div>
+      <p class="hint">Clipdeck checks GitHub (${esc(S.upd ? S.upd.repo : "")}) for new versions when it starts and every 6 hours, installs them, and reloads by itself. It never restarts during a download or export.</p>
+      <label class="row"><input type="checkbox" id="upd-auto" ${!S.upd || S.upd.auto ? "checked" : ""}> Install updates automatically</label>
+      <div class="row"><button class="btn" id="upd-check">Check for updates now</button><span class="status ${S.upd && S.upd.error ? "err" : ""}" id="upd-st" aria-live="polite">${S.upd ? esc(S.upd.error || S.upd.status) + (S.upd.checked ? " · checked " + new Date(S.upd.checked).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "") : ""}</span></div>
+      ${S.upd && S.upd.latest && S.upd.latest.notes ? `<p class="hint">Latest: ${esc(S.upd.latest.notes)}</p>` : ""}
+    </section>
+    <section class="set-card"><div class="set-h"><h2>Quit Clipdeck</h2></div>
+      <p class="hint">Clipdeck keeps running in the background after you close this tab, so links can finish downloading. Quit it here when you're done. Your work is already saved.</p>
+      <div class="row"><button class="btn danger" id="quit">Quit Clipdeck</button></div>
+    </section></div></div>`;
+  const q = id => main.querySelector(id);
+  const saveSet = async (body, msg) => { try { S.status = await API.post("/api/settings", body); toast(msg); renderSettings(); } catch (e) { toast(e.message); } };
+  q("#upd").onclick = async e => {
+    const b = e.currentTarget, s = q("#upd-st"); b.disabled = true; s.className = "status"; s.textContent = "Updating…";
+    try { S.status = await API.post("/api/update-ytdlp"); s.textContent = "Up to date: " + S.status.ytdlp; } catch (err) { s.className = "status err"; s.textContent = err.message; }
+    b.disabled = false;
+  };
+  q("#dbr").onchange = e => saveSet({ browser: e.target.value }, "Default sign-in saved");
+  q("#exd-save").onclick = () => saveSet({ exportDir: q("#exd").value }, "Export folder saved");
+  q("#exd-open").onclick = () => API.post("/api/open-folder", { path: q("#exd").value }).catch(e => toast(e.message));
+  const ks = q("#key-save"); if (ks) ks.onclick = () => { const v = q("#key").value.trim(); if (!v) return toast("Paste your API key first."); saveSet({ apiKey: v }, "API key saved"); };
+  const kr = q("#key-rm"); if (kr) kr.onclick = () => saveSet({ apiKey: "" }, "API key removed");
+  q("#flib-save").onclick = async () => { try { await API.post("/api/settings", { fontLibrary: q("#flib").value }); toast("Folder saved"); renderSettings(); } catch (e) { toast(e.message); } };
+  main.querySelectorAll("[data-rmfont]").forEach(b => b.onclick = async () => {
+    const n = b.dataset.rmfont, f = S.customFonts[n];
+    try {
+      if (f.local) await API.del(`/api/fonts/${encodeURIComponent(n)}`);
+      delete S.customFonts[n];
+      if (!f.local) S.status = await API.post("/api/settings", { fonts: Object.entries(S.customFonts).filter(([, x]) => !x.local).map(([k, x]) => ({ name: k, weights: x.weights })) });
+      toast(`${n} removed`); renderSettings();
+    } catch (e) { toast(e.message); }
+  });
+  q("#upd-auto").onchange = async e => { try { S.upd = await API.post("/api/updates/check", { auto: e.target.checked, check: false }); toast(e.target.checked ? "Automatic updates on" : "Automatic updates off"); } catch (err) { toast(err.message); } };
+  q("#upd-check").onclick = async e => {
+    const b = e.currentTarget, st = q("#upd-st"); b.disabled = true; st.className = "status"; st.textContent = "Checking…";
+    try { S.upd = await API.post("/api/updates/check", { install: true }); st.className = "status" + (S.upd.error ? " err" : ""); st.textContent = S.upd.error || S.upd.status; }
+    catch (err) { st.className = "status err"; st.textContent = err.message; }
+    b.disabled = false;
+  };
+  q("#quit").onclick = async () => {
+    for (const id of Object.keys(saveTimers)) { const p = S.projects.find(x => x.id === id); if (p) await saveProject(p, true); }
+    try { await API.post("/api/shutdown"); } catch (e) {}
+    main.innerHTML = `<div class="view"><div class="dash"><header style="display:grid;gap:8px"><div class="eyebrow">Clipdeck</div><h1>Clipdeck has stopped</h1><p class="lede">You can close this tab. Open Clipdeck from its shortcut next time.</p></header></div></div>`;
+  };
+  q("#key-test").onclick = async e => {
+    const b = e.currentTarget, s = q("#key-st"); b.disabled = true; s.className = "status"; s.textContent = "Asking Claude…";
+    try { const r = await API.post("/api/ai", { prompt: "Reply with exactly: Clipdeck is connected.", tier: "quick" }); s.textContent = r.text.trim(); } catch (err) { s.className = "status err"; s.textContent = err.message; }
+    b.disabled = false;
+  };
+}
+function pickFiles(assign) { const fi = document.getElementById("file-in"); fi.onchange = () => { if (fi.files.length) addFiles([...fi.files], assign); fi.value = ""; }; fi.click(); }
+
+function renderEditor() {
+  const p = S.cur;
+  main.innerHTML = `<div class="editor">
+    <div class="ed-top">
+      <button class="btn ghost sm" id="back">← Rankings</button>
+      <input class="name" id="pname" value="${esc(p.name)}" aria-label="Project name">
+      <span class="card-meta" id="dur-lbl"></span>
+      <span class="savest" id="save-st" aria-live="polite">Saved</span>
+      <button class="btn primary" id="export">${I.out}Export video</button>
+    </div>
+    <div class="ed-main">
+      <aside class="pane" id="left"></aside>
+      <section class="stage"><div class="monitor" id="monitor"></div>
+        <div class="transport">
+          <button class="iconbtn" id="tb-start" aria-label="Back to start">${I.back}</button>
+          <button class="iconbtn big" id="tb-play" aria-label="Play">${I.play}</button>
+          <span class="tc" id="tc">0:00.0 / 0:00.0</span>
+          <label class="toggle"><input type="checkbox" id="guides" ${S.guides ? "checked" : ""}> Shorts safe zones</label>
+        </div></section>
+      <aside class="pane" id="right"></aside>
+    </div>
+    <div class="timeline"><div class="tl-head"><h3>Timeline</h3><div class="row" id="tl-actions"></div></div>
+      <div class="tl-scroll"><div class="tl-track" id="track"></div></div>
+      <div class="music-lane" id="mlane"></div></div>
+  </div>`;
+  document.getElementById("monitor").appendChild(canvas);
+  bindRankDrag();
+  document.getElementById("back").onclick = () => setView("dash");
+  document.getElementById("pname").oninput = e => { p.name = e.target.value; touch(); };
+  document.getElementById("export").onclick = startExport;
+  document.getElementById("tb-play").onclick = () => S.playing ? pause() : play();
+  document.getElementById("tb-start").onclick = () => seek(0);
+  document.getElementById("guides").onchange = e => { S.guides = e.target.checked; drawNow(); };
+  renderLeft(); renderInspector(); renderTimeline(); still();
+  document.fonts.load("60px Anton").then(drawNow); loadProjectFonts(p);
+}
+// Drag the rank list (or big number) up and down directly on the preview.
+let rankDragBound = false;
+function bindRankDrag() {
+  if (rankDragBound) return; rankDragBound = true;
+  const toCanvasY = e => { const r = canvas.getBoundingClientRect(); return (e.clientY - r.top) * (H / r.height); };
+  const toCanvasX = e => { const r = canvas.getBoundingClientRect(); return (e.clientX - r.left) * (W / r.width); };
+  let drag = null;
+  const over = e => { const b = S.rankBox, y = toCanvasY(e), x = toCanvasX(e); return b && b.room > 0 && y >= b.y0 - 10 && y <= b.y1 + 10 && x < W * 0.8; };
+  canvas.addEventListener("pointermove", e => {
+    if (!drag) { canvas.style.cursor = S.cur && S.view === "edit" && over(e) ? "ns-resize" : ""; return; }
+    const p = S.cur, dy = toCanvasY(e) - drag.y;
+    p.rankPos = Math.round(Math.max(0, Math.min(100, drag.start + dy / drag.room * 100)));
+    const sl = document.getElementById("rankpos"); if (sl) { sl.value = p.rankPos; const v = document.getElementById("rankpos-v"); if (v) v.textContent = rankPosLabel(p.rankPos); }
+    drawNow();
+  });
+  canvas.addEventListener("pointerdown", e => {
+    if (!S.cur || S.view !== "edit" || !over(e)) return;
+    drag = { y: toCanvasY(e), start: S.cur.rankPos || 0, room: S.rankBox.room };
+    try { canvas.setPointerCapture(e.pointerId); } catch (x) {}
+    e.preventDefault();
+  });
+  const end = () => { if (drag) { drag = null; touch(); } };
+  canvas.addEventListener("pointerup", end); canvas.addEventListener("pointercancel", end);
+}
+function updateClock() {
+  const tc = document.getElementById("tc"); if (tc) tc.textContent = `${fmt(S.t)} / ${fmt(totalDur())}`;
+  const d = document.getElementById("dur-lbl"); if (d) { const T = totalDur(); d.textContent = `Top ${items(S.cur).length} · ${fmt(T)}${T > 180 ? " · over the 3-minute Shorts limit" : T > 60 ? " · over 1 minute" : ""}`; d.style.color = T > 180 ? "var(--danger)" : T > 60 ? "var(--hot)" : ""; }
+}
+function updateTransport() { const b = document.getElementById("tb-play"); if (b) { b.innerHTML = S.playing ? I.pause : I.play; b.setAttribute("aria-label", S.playing ? "Pause" : "Play"); } }
+// Changing the order rearranges play order; every item keeps its rank.
+function rankPosLabel(v) { v = +v || 0; return v <= 2 ? "Top" : v >= 98 ? "Bottom" : v >= 45 && v <= 55 ? "Middle" : v + "%"; }
+function setOrder(o) {
+  const p = S.cur; if (p.order === o && o !== "shuffle") return;
+  const it = items(p); it.forEach(s => s.rank = rankOf(p, s));
+  const selS = p.scenes[S.sel];
+  p.order = o;
+  if (o === "shuffle") setPlayOrder(p, shuffledItems(p));
+  else setPlayOrder(p, [...it].sort((a, b) => o === "down" ? b.rank - a.rank : a.rank - b.rank));
+  S.sel = Math.max(0, p.scenes.indexOf(selS));
+  touch(); renderLeft(); renderInspector(); renderTimeline(); seek(0);
+  if (o === "shuffle") toast("Play order: " + items(p).map(s => "#" + rankOf(p, s)).join(" → "));
+}
+
+function renderLeft() {
+  const L = document.getElementById("left"); if (!L) return; const p = S.cur;
+  L.innerHTML = `<div class="tabs" role="tablist">
+      <button role="tab" aria-selected="${S.tab === "media"}" data-tab="media">Clips</button>
+      <button role="tab" aria-selected="${S.tab === "links"}" data-tab="links">Links</button>
+      <button role="tab" aria-selected="${S.tab === "style"}" data-tab="style">Look</button>
+      <button role="tab" aria-selected="${S.tab === "publish"}" data-tab="publish">Publish</button></div><div id="tabbody" class="sect"></div>`;
+  L.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { S.tab = b.dataset.tab; renderLeft(); });
+  const B = L.querySelector("#tabbody");
+  if (S.tab === "media") {
+    const ms = projMedia();
+    B.innerHTML = `<div class="drop" id="drop">${I.up}<div>Drop clips, images or music</div><button class="btn sm" id="browse">Browse files</button></div>
+      ${ms.some(m => m.type !== "audio") ? `<button class="btn sm" id="autofill">Put clips on empty ranks in order</button>` : ""}
+      <div class="lib">${ms.map(m => `<button class="lib-item" data-mid="${m.id}" title="${esc(m.name)}">${m.type === "image" ? `<img alt="" src="${mediaEl(m.id).url}">` : m.type === "video" ? `<video muted preload="metadata" src="${mediaEl(m.id).url}#t=0.5"></video>` : `<div class="audio-ico">${I.note}</div>`}<span class="kind">${m.type}${m.duration ? " " + m.duration.toFixed(0) + "s" : ""}</span><span class="cap">${esc(m.name)}</span></button>`).join("")}</div>
+      ${ms.length ? `<p class="hint">Click a clip to put it on the selected rank. Click audio to use it as background music.</p>` : `<p class="hint">Name files in the order they'll play (01, 02…), drop them all, then use "Put clips on empty ranks". Files stay in this browser.</p>`}`;
+    const d = B.querySelector("#drop");
+    d.ondragover = e => { e.preventDefault(); d.classList.add("over"); }; d.ondragleave = () => d.classList.remove("over");
+    d.ondrop = e => { e.preventDefault(); d.classList.remove("over"); addFiles([...e.dataTransfer.files].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })), false); };
+    B.querySelector("#browse").onclick = () => pickFiles(false);
+    const af = B.querySelector("#autofill"); if (af) af.onclick = autofill;
+    B.querySelectorAll("[data-mid]").forEach(b => b.onclick = () => {
+      const m = S.media[b.dataset.mid];
+      if (m.type === "audio") { p.music = { mediaId: m.id, vol: p.music ? p.music.vol : 0.6 }; toast("Set as background music"); renderTimeline(); }
+      else { const s = p.scenes[S.sel]; if (!s) return; s.mediaId = m.id; s.trim = 0; onVideoSet(S.sel); toast(s.kind === "item" ? `Clip set on #${rankOf(p, s)}` : `Clip set on the ${s.kind}`); renderInspector(); renderTimeline(); still(); }
+      touch();
+    });
+  } else if (S.tab === "links") {
+    renderLinks(B);
+  } else if (S.tab === "style") {
+    const N = items(p).length || "N";
+    B.innerHTML = `<div class="hl-group" id="hl-ed"></div>
+      <div class="sect"><span class="lbl">Layout</span><div class="seg seg3">
+        <button aria-pressed="${p.videoArea === "bands"}" data-varea="bands">Top &amp; bottom sections</button>
+        <button aria-pressed="${p.videoArea === "below"}" data-varea="below">Below the headline</button>
+        <button aria-pressed="${p.videoArea === "full"}" data-varea="full">Full screen</button></div>
+        ${p.videoArea !== "full" ? `<div class="seg">
+          <button aria-pressed="${p.videoFit === "fill"}" data-vfit="fill">Fill the ${p.videoArea === "bands" ? "middle" : "space"}</button>
+          <button aria-pressed="${p.videoFit === "fit"}" data-vfit="fit">Show whole clip</button></div>
+          <p class="hint">${p.videoFit === "fill" ? "The clip covers the whole middle. Edges that don't fit are trimmed; use Frame left/right and up/down on each rank to choose what shows." : "The whole clip shows, with a blurred copy filling any gaps."}</p>` : ""}
+        ${p.videoArea === "bands" ? (() => { const T = bandHeight(ctx, p), auto = bandAutoHeight(ctx, p); return `<div class="field"><label for="bandh">Top &amp; bottom section height <span id="bandh-v">${p.bandH ? T + " px" : "Auto, " + auto + " px"}</span></label>
+          <input type="range" id="bandh" min="${BAND_SET_MIN}" max="${BAND_SET_MAX}" step="2" value="${T}" aria-describedby="bandh-hint">
+          <div class="row"><span class="card-meta" id="bandh-mid">Middle (video): ${H - 2 * T} px of ${H}</span><button class="btn sm ghost" id="bandh-auto" ${p.bandH ? "" : "disabled"}>Auto height</button></div>
+          <span class="hint" id="bandh-hint">Drag left for thinner sections and a bigger video. If a section gets too thin for the headline, the headline shrinks to fit.</span></div>`; })() : ""}
+        ${p.videoArea === "bands" ? `<p class="hint">A solid section on top holds the headline and a matching one sits under the clip, both the same height and colour. Change the colour with the headline settings above.</p>` : ""}
+        ${p.videoArea === "below" ? `<div class="field"><label for="vnudge">Move video down <span id="vnudge-v">${p.videoNudge || 0} px</span></label><input type="range" id="vnudge" min="0" max="400" step="5" value="${p.videoNudge || 0}"></div>
+          <p class="hint">The clip starts under the headline, so the headline never covers text in the clip.</p>` : ""}
+        ${p.videoArea === "full" ? '<p class="hint">The clip fills the screen and the headline sits on top of it.</p>' : ""}</div>
+      <div class="sect"><span class="lbl">Rank display</span><div class="seg">
+        <button aria-pressed="${p.layout === "ladder"}" data-lay="ladder">${I.ladder}Rank list</button>
+        <button aria-pressed="${p.layout === "big"}" data-lay="big">${I.big}Big number</button></div>
+        <p class="hint">${p.layout === "ladder" ? "All ranks stay on screen. Each name appears when its rank plays; until then only the number shows." : "Shows only the current rank as a large number."}</p>
+        <div class="field"><label for="rankpos">Rank position <span id="rankpos-v">${rankPosLabel(p.rankPos)}</span></label><input type="range" id="rankpos" min="0" max="100" step="1" value="${p.rankPos || 0}"><span class="hint">Or drag the ${p.layout === "ladder" ? "rank list" : "number"} up or down on the preview.</span></div>
+        ${p.layout === "ladder" ? `<label class="row"><input type="checkbox" id="ladder-fade" ${p.ladderBg === "fade" ? "checked" : ""}> Dark shade behind the rank list</label>` : ""}</div>
+      <div class="sect"><span class="lbl">Order</span><div class="seg">
+        <button aria-pressed="${p.order === "down"}" data-ord="down">Countdown<br>#${N} → #1</button>
+        <button aria-pressed="${p.order === "up"}" data-ord="up">Start at #1<br>#1 → #${N}</button></div>
+        <button class="btn ${p.order === "shuffle" ? "primary" : ""}" data-ord="shuffle" aria-pressed="${p.order === "shuffle"}">${p.order === "shuffle" ? "Shuffle again" : "Shuffle: play ranks in random order"}</button>
+        ${p.order === "shuffle" ? `<p class="hint">Now playing: ${items(p).map(s => "#" + rankOf(p, s)).join(" → ") || "no ranks yet"}. Each name drops into its slot on the rank list as it plays.</p>
+        <label class="row"><input type="checkbox" id="keeptop" ${p.keepTop ? "checked" : ""}> Save #1 for last</label>` : ""}</div>
+      <div class="sect"><span class="lbl">Caption style</span><div class="styles">
+        ${[["punch", "PUNCH", "Bold outline"], ["box", "Box", "White pill"], ["clean", "Clean", "Soft shadow"]].map(([k, s, d]) => `<button class="style-opt" aria-pressed="${p.captionStyle === k}" data-cs="${k}"><span class="s">${s}</span>${d}</button>`).join("")}</div></div>
+      <label class="row"><input type="checkbox" id="flash" ${p.flash ? "checked" : ""}> Flash on every rank change</label>
+      <div class="sect"><span class="lbl">Background music</span>
+        ${p.music && S.media[p.music.mediaId] ? `<div class="card-meta">${esc(S.media[p.music.mediaId].name)}</div>
+        <div class="field"><label for="mvol">Music volume</label><input type="range" id="mvol" min="0" max="1" step="0.05" value="${p.music.vol}"></div>
+        <button class="btn sm danger" id="mrm">Remove music</button>` : `<p class="hint">Upload an audio file under Clips, then click it to use it here. Clip audio plays on top.</p>`}</div>`;
+    renderHlEditor();
+    B.querySelectorAll("[data-varea]").forEach(b => b.onclick = () => { p.videoArea = b.dataset.varea; touch(); renderLeft(); drawNow(); });
+    B.querySelectorAll("[data-vfit]").forEach(b => b.onclick = () => { p.videoFit = b.dataset.vfit; touch(); renderLeft(); drawNow(); });
+    const bh = B.querySelector("#bandh");
+    if (bh) {
+      bh.oninput = e => { p.bandH = +e.target.value; B.querySelector("#bandh-v").textContent = p.bandH + " px"; B.querySelector("#bandh-mid").textContent = `Middle (video): ${H - 2 * p.bandH} px of ${H}`; B.querySelector("#bandh-auto").disabled = false; touch(); drawNow(); };
+      B.querySelector("#bandh-auto").onclick = () => { p.bandH = null; touch(); renderLeft(); drawNow(); };
+    }
+    const vn = B.querySelector("#vnudge"); if (vn) vn.oninput = e => { p.videoNudge = +e.target.value; B.querySelector("#vnudge-v").textContent = p.videoNudge + " px"; touch(); drawNow(); };
+    const rp = B.querySelector("#rankpos"); if (rp) rp.oninput = e => { p.rankPos = +e.target.value; B.querySelector("#rankpos-v").textContent = rankPosLabel(p.rankPos); touch(); drawNow(); };
+    const lf = B.querySelector("#ladder-fade"); if (lf) lf.onchange = e => { p.ladderBg = e.target.checked ? "fade" : "clear"; touch(); drawNow(); };
+    B.querySelectorAll("[data-lay]").forEach(b => b.onclick = () => { p.layout = b.dataset.lay; touch(); renderLeft(); drawNow(); });
+    B.querySelectorAll("[data-ord]").forEach(b => b.onclick = () => setOrder(b.dataset.ord));
+    const kt = B.querySelector("#keeptop"); if (kt) kt.onchange = e => { p.keepTop = e.target.checked; setOrder("shuffle"); };
+    B.querySelectorAll("[data-cs]").forEach(b => b.onclick = () => { p.captionStyle = b.dataset.cs; touch(); renderLeft(); drawNow(); });
+    B.querySelector("#flash").onchange = e => { p.flash = e.target.checked; touch(); };
+    const mv = B.querySelector("#mvol"); if (mv) mv.oninput = e => { p.music.vol = +e.target.value; const mu = music(); if (mu) { if (mu.gain) mu.gain.gain.value = p.music.vol; else mu.el.volume = p.music.vol; } touch(); };
+    const mr = B.querySelector("#mrm"); if (mr) mr.onclick = () => { const mu = music(); if (mu) mu.el.pause(); p.music = null; touch(); renderLeft(); renderTimeline(); };
+  } else {
+    const m = p.meta;
+    B.innerHTML = `<button class="btn primary" id="meta-ai">${I.spark}Suggest title & hashtags</button><div class="status" id="meta-st" aria-live="polite"></div>
+      <div id="alt"></div>
+      <div class="field"><label for="m-title">Title <span id="tlen"></span></label><div class="copyrow"><input type="text" id="m-title" value="${esc(m.title)}"><button class="btn sm" data-copy="m-title">Copy</button></div></div>
+      <div class="field"><label for="m-desc">Description</label><div class="copyrow"><textarea id="m-desc">${esc(m.description)}</textarea><button class="btn sm" data-copy="m-desc">Copy</button></div></div>
+      <div class="field"><label for="m-tags">Hashtags</label><div class="copyrow"><textarea id="m-tags" style="min-height:50px">${esc(m.hashtags)}</textarea><button class="btn sm" data-copy="m-tags">Copy</button></div></div>
+      <div class="field"><label for="m-pin">Pinned comment</label><div class="copyrow"><textarea id="m-pin" readonly style="min-height:120px">${esc(pinnedComment())}</textarea><button class="btn sm" data-copy="m-pin">Copy</button></div><span class="hint">The full list from #1 down, to pin under the video.</span></div>
+      <div class="field"><label for="m-src">Clip sources</label><div class="copyrow"><textarea id="m-src" readonly class="code short" wrap="off">${esc(sourceList() || "No source links yet. Add them in the Links tab.")}</textarea><button class="btn sm" data-copy="m-src">Copy</button></div><span class="hint">Credit the original creators in your description or pinned comment.</span></div>`;
+    const tl = () => { B.querySelector("#tlen").textContent = `· ${B.querySelector("#m-title").value.length}/100`; }; tl();
+    B.querySelector("#m-title").oninput = e => { m.title = e.target.value; tl(); touch(); };
+    B.querySelector("#m-desc").oninput = e => { m.description = e.target.value; touch(); };
+    B.querySelector("#m-tags").oninput = e => { m.hashtags = e.target.value; touch(); };
+    B.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => { const id = b.dataset.copy; let v = B.querySelector("#" + id).value; if (id === "m-tags") v = v.split(",").map(s => s.trim()).filter(Boolean).map(s => "#" + s.replace(/^#/, "").replace(/\s+/g, "")).join(" "); copy(v, b); });
+    B.querySelector("#meta-ai").onclick = async ev => {
+      const btn = ev.currentTarget, st = B.querySelector("#meta-st"); btn.disabled = true; st.className = "status"; st.textContent = "Asking Claude…";
+      try {
+        const d = await aiMeta();
+        m.description = d.description || m.description; m.hashtags = (d.hashtags || []).join(", ") || m.hashtags;
+        if (d.titles && d.titles[0]) m.title = d.titles[0];
+        touch(); renderLeft();
+        const alt = document.getElementById("alt");
+        if (alt && d.titles && d.titles.length > 1) { alt.innerHTML = `<div class="sect"><span class="lbl">Other title ideas</span>${d.titles.slice(1).map(t => `<button class="btn sm ghost" style="white-space:normal;text-align:left;justify-content:flex-start" data-alt="${esc(t)}">${esc(t)}</button>`).join("")}</div>`; alt.querySelectorAll("[data-alt]").forEach(b => b.onclick = () => { m.title = b.dataset.alt; touch(); document.getElementById("m-title").value = m.title; }); }
+      } catch (e) { st.className = "status err"; st.textContent = aiError(e); btn.disabled = false; }
+    };
+  }
+}
+// ---------- cutter: pick any part of a video, up to MAX_CLIP seconds ----------
+function onVideoSet(si) {
+  const s = S.cur.scenes[si], m = s && S.media[s.mediaId];
+  if (!m || m.type !== "video" || !m.duration) return;
+  if (s.dur > m.duration) s.dur = Math.max(0.5, Math.round(m.duration * 10) / 10);
+  if (m.duration > MAX_CLIP + 0.05) setTimeout(() => openCutter(si), 60);
+}
+function openCutter(si) {
+  const p = S.cur, s = p.scenes[si], m = s && S.media[s.mediaId];
+  if (!m || m.type !== "video") return;
+  if (S.playing) pause();
+  const D = m.duration || mediaEl(m.id).el.duration || 0;
+  if (!D || !isFinite(D)) return toast("This clip's length couldn't be read. Try re-adding the file.");
+  const url = mediaEl(m.id).url, clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+  const MIN = Math.min(0.5, D);
+  let a = clamp(s.trim, 0, Math.max(0, D - MIN)), len = clamp(s.dur, MIN, Math.min(MAX_CLIP, D - a));
+  const tag = s.kind === "item" ? "#" + rankOf(p, s) : s.kind;
+  const box = modal(`<div class="cut-head"><h2>Cut clip · ${esc(tag)}</h2><span class="card-meta">${esc(m.name)} · ${fmt(D)}</span></div>
+    <div class="cut-stage"><video id="cv" playsinline preload="auto"></video></div>
+    <div class="cut-bar" id="cbar"><div class="strip" id="strip"></div>
+      <div class="win" id="win"><span class="hdl l" id="hl" tabindex="0" role="slider" aria-label="Start of cut"></span><span class="hdl r" id="hr" tabindex="0" role="slider" aria-label="End of cut"></span></div>
+      <div class="cph" id="cph"></div></div>
+    <div class="cut-ticks"><span>0:00</span><span>${fmt(D / 2)}</span><span>${fmt(D)}</span></div>
+    <p class="hint">Drag the yellow box to move the cut, or its edges to resize it. Click anywhere else on the bar to look at that moment.</p>
+    <div class="cut-row">
+      <div class="field"><label for="c-a">Start</label><input type="text" id="c-a" inputmode="decimal"></div>
+      <div class="field"><label for="c-b">End</label><input type="text" id="c-b" inputmode="decimal"></div>
+      <div class="cut-len"><b id="c-len"></b><span>of ${MAX_CLIP} s max</span></div></div>
+    <div class="row"><button class="btn" id="c-play">${I.play}Play cut</button><button class="btn sm ghost" id="c-sa">Start here</button><button class="btn sm ghost" id="c-sb">End here</button></div>
+    <div class="row" style="justify-content:flex-end"><button class="btn" id="c-cancel">Cancel</button><button class="btn primary" id="c-ok">Use this cut</button></div>`);
+  box.querySelector(".modal-box").classList.add("wide");
+  const q = id => box.querySelector(id), v = q("#cv"), bar = q("#cbar"), win = q("#win"), hl = q("#hl"), hr = q("#hr"), cph = q("#cph");
+  const ia = q("#c-a"), ib = q("#c-b"), lenEl = q("#c-len"), playBtn = q("#c-play");
+  let alive = true, looping = false, raf2 = 0;
+  v.src = url; v.currentTime = a;
+  function update() {
+    win.style.left = (a / D * 100) + "%"; win.style.width = (len / D * 100) + "%";
+    if (document.activeElement !== ia) ia.value = fmt(a);
+    if (document.activeElement !== ib) ib.value = fmt(a + len);
+    lenEl.textContent = len.toFixed(1) + " s"; lenEl.classList.toggle("max", len >= MAX_CLIP - 0.05);
+    hl.setAttribute("aria-valuetext", fmt(a)); hr.setAttribute("aria-valuetext", fmt(a + len));
+  }
+  const setStart = (na, keepEnd) => { const end = a + len; if (keepEnd) { a = clamp(na, Math.max(0, end - MAX_CLIP), end - MIN); len = end - a; } else { a = clamp(na, 0, D - MIN); len = clamp(len, MIN, Math.min(MAX_CLIP, D - a)); } };
+  const setEnd = ne => { ne = clamp(ne, MIN, D); if (ne - a > MAX_CLIP) a = ne - MAX_CLIP; if (ne - a < MIN) a = Math.max(0, ne - MIN); len = ne - a; };
+  const seekTo = t => { try { v.currentTime = clamp(t, 0, D - 0.01); } catch (e) {} };
+  const stopLoop = () => { looping = false; v.pause(); playBtn.innerHTML = I.play + "Play cut"; };
+  const tick = () => { if (!alive) return; cph.style.left = (v.currentTime / D * 100) + "%"; if (looping && (v.currentTime >= a + len || v.currentTime < a - 0.3)) seekTo(a); raf2 = requestAnimationFrame(tick); };
+  raf2 = requestAnimationFrame(tick);
+  let drag = null;
+  const timeAt = e => { const r = bar.getBoundingClientRect(); return clamp((e.clientX - r.left) / r.width, 0, 1) * D; };
+  bar.onpointerdown = e => {
+    const t = timeAt(e);
+    if (e.target === hl) drag = { k: "l" }; else if (e.target === hr) drag = { k: "r" }; else if (win.contains(e.target)) drag = { k: "m", off: t - a }; else { drag = { k: "s" }; if (looping) stopLoop(); seekTo(t); }
+    try { bar.setPointerCapture(e.pointerId); } catch (x) {}
+    e.preventDefault();
+  };
+  bar.onpointermove = e => {
+    if (!drag) return; const t = timeAt(e);
+    if (drag.k === "l") { setStart(t, true); seekTo(a); }
+    else if (drag.k === "r") { setEnd(t); seekTo(a + len - 0.05); }
+    else if (drag.k === "m") { a = clamp(t - drag.off, 0, D - len); seekTo(a); }
+    else seekTo(t);
+    update();
+  };
+  bar.onpointerup = bar.onpointercancel = () => { drag = null; };
+  const nudge = (which, e) => {
+    const step = e.shiftKey ? 1 : 0.1, d = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0; if (!d) return;
+    e.preventDefault(); if (which === "l") { setStart(a + d, true); seekTo(a); } else { setEnd(a + len + d); seekTo(a + len - 0.05); } update();
+  };
+  hl.onkeydown = e => nudge("l", e); hr.onkeydown = e => nudge("r", e);
+  ia.onchange = () => { const t = parseT(ia.value); if (t == null || isNaN(t)) { toast("Type a time like 1:05 or 65."); } else { setStart(t, false); seekTo(a); } ia.blur(); update(); };
+  ib.onchange = () => { const t = parseT(ib.value); if (t == null || isNaN(t)) { toast("Type a time like 1:05 or 65."); } else { if (t - a > MAX_CLIP) toast(`Cuts are ${MAX_CLIP} s at most, so the start moved to ${fmt(t - MAX_CLIP)}.`); setEnd(t); seekTo(a + len - 0.05); } ib.blur(); update(); };
+  q("#c-sa").onclick = () => { setStart(v.currentTime, false); update(); };
+  q("#c-sb").onclick = () => { const t = v.currentTime; if (t < MIN) return toast("Move a little later in the video before setting the end."); setEnd(t); update(); };
+  playBtn.onclick = () => { if (looping) return stopLoop(); looping = true; seekTo(a); v.play().catch(() => {}); playBtn.innerHTML = I.pause + "Pause"; };
+  q("#c-cancel").onclick = closeModal;
+  q("#c-ok").onclick = () => {
+    s.trim = +a.toFixed(2); s.dur = Math.min(MAX_CLIP, Math.max(MIN, Math.round(len * 10) / 10));
+    touch(); closeModal(); S.sel = si; S.t = sceneStart(si) + 0.01; renderInspector(); renderTimeline(); still();
+    toast(`Cut set: ${fmt(s.trim)} → ${fmt(s.trim + s.dur)}`);
+  };
+  const onKey = e => { if (e.key === "Escape") closeModal(); };
+  document.addEventListener("keydown", onKey);
+  box._cleanup = () => { alive = false; cancelAnimationFrame(raf2); v.pause(); v.removeAttribute("src"); v.load(); document.removeEventListener("keydown", onKey); };
+  update();
+  // Filmstrip: grab evenly spaced frames from a hidden copy of the video.
+  (async () => {
+    const strip = q("#strip"), N = 12, tv = document.createElement("video");
+    tv.muted = true; tv.preload = "auto"; tv.src = url;
+    await new Promise(r => { if (tv.readyState >= 1) r(); else { tv.addEventListener("loadedmetadata", r, { once: true }); setTimeout(r, 4000); } });
+    for (let i = 0; i < N && alive; i++) {
+      const cv = document.createElement("canvas"); cv.width = 96; cv.height = 60; strip.appendChild(cv);
+      await new Promise(r => { const to = setTimeout(r, 3000); tv.addEventListener("seeked", () => { clearTimeout(to); r(); }, { once: true }); tv.currentTime = (i + 0.5) / N * D; });
+      if (!alive || !tv.videoWidth) continue;
+      const c = cv.getContext("2d"), sc = Math.max(96 / tv.videoWidth, 60 / tv.videoHeight), w = tv.videoWidth * sc, h = tv.videoHeight * sc;
+      c.drawImage(tv, (96 - w) / 2, (60 - h) / 2, w, h);
+    }
+    tv.removeAttribute("src"); tv.load();
+  })();
+}
+const ACTIVE = ["queued", "downloading", "cutting", "saving"];
+function sceneTag(p, s) { return s.kind === "item" ? "#" + rankOf(p, s) : s.kind.toUpperCase(); }
+function jobLine(sid) {
+  const j = S.jobs[sid]; if (!j) return "";
+  if (j.state === "error") return `<span class="job err">${esc(j.error || "Download failed")}</span>`;
+  if (j.state === "done") return `<span class="job ok">Downloaded</span>`;
+  const lbl = { queued: "Waiting…", downloading: `Downloading${j.progress ? " " + Math.round(j.progress) + "%" : "…"}`, cutting: "Cutting…", saving: "Saving…" }[j.state] || "";
+  const w = j.state === "downloading" ? Math.max(4, j.progress || 0) : j.state === "queued" ? 0 : 100;
+  return `<span class="job">${lbl}</span><span class="jbar"><i style="width:${w}%"></i></span>`;
+}
+function updateJobUI(sid) {
+  const el = document.getElementById("job-" + sid); if (el) el.innerHTML = jobLine(sid);
+  const busy = ACTIVE.includes((S.jobs[sid] || {}).state);
+  document.querySelectorAll(`[data-fetch-id="${sid}"]`).forEach(b => b.disabled = busy);
+}
+async function fetchScene(s, quiet) {
+  const p = S.cur, u = cleanUrl(s.src.url);
+  if (!u) { if (!quiet) toast("Paste a link first."); return false; }
+  const a = parseT(s.src.from), b = parseT(s.src.to);
+  if (isNaN(a) || isNaN(b)) { toast("Fix the times first. Use 1:05 or 65."); return false; }
+  if (ACTIVE.includes((S.jobs[s.id] || {}).state)) return false;
+  const tag = sceneTag(p, s);
+  S.jobs[s.id] = { state: "queued", progress: 0, pid: p.id, tag };
+  updateJobUI(s.id);
+  try {
+    const r = await API.post("/api/fetch", { url: u, from: s.src.from, to: s.src.to, browser: p.browser || "", projectId: p.id, sceneId: s.id, label: tag + (s.label ? " " + s.label : "") });
+    S.jobs[s.id].job = r.job; pollJobs();
+  } catch (e) { Object.assign(S.jobs[s.id], { state: "error", error: e.message }); }
+  updateJobUI(s.id); return true;
+}
+function applyJob(pid, sid, meta) {
+  S.media[meta.id] = meta;
+  const p = S.projects.find(x => x.id === pid), s = p && p.scenes.find(x => x.id === sid); if (!s) return;
+  s.mediaId = meta.id; s.trim = 0;
+  if (meta.duration > 0.3) s.dur = Math.max(1, Math.min(MAX_CLIP, Math.round(meta.duration * 10) / 10));
+  touch(p);
+  if (S.cur === p && S.view === "edit") {
+    renderTimeline(); if (p.scenes[S.sel] === s) renderInspector(); still();
+    const left = document.getElementById("left");
+    if (S.tab === "links" && !(left && left.contains(document.activeElement) && /INPUT|TEXTAREA/.test(document.activeElement.tagName))) renderLeft();
+  }
+}
+let pollT = 0;
+function pollJobs() {
+  if (pollT) return;
+  pollT = setInterval(async () => {
+    const act = Object.entries(S.jobs).filter(([, j]) => j.job && ACTIVE.includes(j.state));
+    if (!act.length) { clearInterval(pollT); pollT = 0; return; }
+    for (const [sid, j] of act) {
+      try {
+        const r = await API.get(`/api/jobs/${j.job}`);
+        Object.assign(j, { state: r.state, progress: r.progress, error: r.error });
+        if (r.state === "done" && r.media) { applyJob(j.pid, sid, r.media); toast(`${j.tag} downloaded`); }
+        else if (r.state === "error") toast(`${j.tag}: ${r.error}`);
+      } catch (e) { if (e.code === 404) Object.assign(j, { state: "error", error: "Clipdeck restarted before this finished. Fetch it again." }); }
+      updateJobUI(sid);
+    }
+  }, 700);
+}
+function renderLinks(B) {
+  const p = S.cur, sc = p.scenes, br = ["firefox", "chrome", "chromium", "brave", "edge"];
+  const def = S.status.browser ? S.status.browser[0].toUpperCase() + S.status.browser.slice(1) : "none";
+  B.innerHTML = `<p class="hint">Paste a TikTok, YouTube, Instagram or Facebook link for each rank and fetch it. The clip downloads straight onto its rank, cut to ${MAX_CLIP} seconds at most.</p>
+    <button class="btn primary" id="fetch-all">${I.out}Fetch all links</button>
+    <details id="bulk-d"><summary>Paste many links at once</summary><div class="sect">
+      <textarea id="bulk" placeholder="One link per line, in the order they play"></textarea>
+      <button class="btn sm" id="bulk-go">Fill ranks in play order</button></div></details>
+    <div class="links">${sc.map((s, i) => {
+      const pl = platformOf(s.src.url), a = parseT(s.src.from), b = parseT(s.src.to);
+      const badRange = (a != null && b != null && !isNaN(a) && !isNaN(b) && (b <= a || b - a > MAX_CLIP));
+      const busy = ACTIVE.includes((S.jobs[s.id] || {}).state);
+      return `<div class="link-row${i === S.sel ? " sel" : ""}">
+        <div class="link-h"><b>${sceneTag(p, s)}</b><span class="nm">${esc(s.kind === "item" ? s.label || s.text || "Unnamed" : s.text)}</span>${s.mediaId ? '<span class="got">✓ clip</span>' : ""}${pl ? `<span class="plat" data-p="${pl.k}">${esc(pl.n)}</span>` : ""}</div>
+        <input type="text" inputmode="url" id="url-${s.id}" data-i="${i}" data-f="url" value="${esc(s.src.url)}" placeholder="https://…" aria-label="Link for ${sceneTag(p, s)}" class="${pl && pl.k === "bad" ? "bad-input" : ""}">
+        <div class="times">
+          <input type="text" id="from-${s.id}" data-i="${i}" data-f="from" value="${esc(s.src.from)}" placeholder="From 0:00" aria-label="Start time" class="${isNaN(a) || badRange ? "bad-input" : ""}">
+          <input type="text" id="to-${s.id}" data-i="${i}" data-f="to" value="${esc(s.src.to)}" placeholder="To (end)" aria-label="End time" class="${isNaN(b) || badRange ? "bad-input" : ""}">
+        </div>
+        <div class="row fetchrow"><button class="btn sm" data-fetch-id="${s.id}" ${busy ? "disabled" : ""}>${s.mediaId ? "Fetch again" : "Fetch"}</button><span class="jobwrap" id="job-${s.id}">${jobLine(s.id)}</span></div></div>`;
+    }).join("")}</div>
+    <p class="hint">No times set: the first ${MAX_CLIP} seconds. Only a start time: the ${MAX_CLIP} seconds after it.</p>
+    <div class="field"><label for="ck">Sign-in for this ranking</label>
+      <select id="ck"><option value="">Default from Settings (${esc(def)})</option><option value="none" ${p.browser === "none" ? "selected" : ""}>None</option>${br.map(b => `<option value="${b}" ${p.browser === b ? "selected" : ""}>Use my ${b[0].toUpperCase() + b.slice(1)} sign-in</option>`).join("")}</select>
+      <span class="hint">Instagram, Facebook and some YouTube videos need a browser you're signed in with. Firefox works most reliably.</span></div>`;
+  B.querySelectorAll("[data-f]").forEach(inp => inp.oninput = () => {
+    const s = sc[+inp.dataset.i]; s.src[inp.dataset.f] = inp.value; touch();
+    if (inp.dataset.f === "url") { const pl = platformOf(inp.value), row = inp.closest(".link-row"), h = row.querySelector(".link-h"); let tag = h.querySelector(".plat"); if (!pl) { tag && tag.remove(); } else { if (!tag) { tag = document.createElement("span"); tag.className = "plat"; h.appendChild(tag); } tag.dataset.p = pl.k; tag.textContent = pl.n; } inp.classList.toggle("bad-input", !!pl && pl.k === "bad"); }
+    else { const a = parseT(s.src.from), b = parseT(s.src.to), bad = a != null && b != null && !isNaN(a) && !isNaN(b) && (b <= a || b - a > MAX_CLIP); const row = inp.closest(".link-row"); row.querySelector('[data-f="from"]').classList.toggle("bad-input", isNaN(a) || bad); row.querySelector('[data-f="to"]').classList.toggle("bad-input", isNaN(b) || bad); }
+  });
+  B.querySelectorAll("[data-f]").forEach(inp => inp.onfocus = () => { const i = +inp.dataset.i; if (S.sel !== i) { S.sel = i; S.t = sceneStart(i) + 0.01; markSel(); renderInspector(); still(); B.querySelectorAll(".link-row").forEach((r, k) => r.classList.toggle("sel", k === i)); } });
+  B.querySelectorAll("[data-fetch-id]").forEach(b => b.onclick = () => { const s = sc.find(x => x.id === b.dataset.fetchId); if (s) fetchScene(s); });
+  B.querySelector("#fetch-all").onclick = async () => {
+    const todo = sc.filter(s => cleanUrl(s.src.url) && !ACTIVE.includes((S.jobs[s.id] || {}).state) && (!s.mediaId || ((S.media[s.mediaId] || {}).source || {}).url !== cleanUrl(s.src.url)));
+    if (!todo.length) return toast(sc.some(s => cleanUrl(s.src.url)) ? "Every link is already downloaded." : "Paste at least one link first.");
+    let n = 0; for (const s of todo) if (await fetchScene(s, true)) n++;
+    if (n) toast(`Fetching ${n} clip${n > 1 ? "s" : ""}…`);
+  };
+  B.querySelector("#ck").onchange = e => { p.browser = e.target.value; touch(); };
+  B.querySelector("#bulk-go").onclick = () => {
+    const urls = B.querySelector("#bulk").value.split(/\s+/).map(cleanUrl).filter(Boolean);
+    if (!urls.length) return toast("No links found. Paste one link per line.");
+    let need = urls.length - items(p).filter(s => !s.src.url).length;
+    while (need-- > 0 && !full(p)) addScene("item", true);
+    let k = 0; for (const s of items(p)) { if (k >= urls.length) break; if (!s.src.url) s.src.url = urls[k++]; }
+    touch(); toast(k < urls.length ? `Added ${k} link${k === 1 ? "" : "s"}. A ranking holds ${MAX_RANKS} at most, so ${urls.length - k} ${urls.length - k === 1 ? "was" : "were"} left out.` : `Added ${k} link${k > 1 ? "s" : ""}. Press Fetch all links.`); renderLeft(); renderTimeline();
+  };
+}
+function sourceList() {
+  const p = S.cur;
+  return p.scenes.filter(s => cleanUrl(s.src.url)).map(s => `${sceneTag(p, s)}${s.kind === "item" && s.label ? " " + s.label : ""}: ${cleanUrl(s.src.url)}`).join("\n");
+}
+// ---------- headline editor ----------
+const SWATCH = ["#FFFFFF", "#FFD23F", "#FF3B3B", "#FF8A1F", "#3EE07A", "#29D3FF", "#FF4FB3", "#111111"];
+const swatchRow = (attr, cur) => SWATCH.map(c => `<button class="sw" style="background:${c}" data-${attr}="${c}" aria-label="Color ${c}" aria-pressed="${(cur || "").toLowerCase() === c.toLowerCase()}"></button>`).join("");
+function fontOptions(cur) {
+  const top = TOP_FONTS.map(f => f[0]), picks = Object.keys(FONT_LIB).filter(n => !FONT_LIB[n].rank), extra = Object.keys(S.customFonts).filter(n => !FONT_LIB[n]).sort((a, b) => a.localeCompare(b));
+  const files = extra.filter(n => S.customFonts[n].local), google = extra.filter(n => !S.customFonts[n].local);
+  const opt = n => `<option value="${esc(n)}" ${n === cur ? "selected" : ""}>${esc(n)}</option>`;
+  const ranked = n => `<option value="${esc(n)}" ${n === cur ? "selected" : ""}>${FONT_LIB[n].rank}. ${esc(n)}</option>`;
+  return `${files.length ? `<optgroup label="Your font files">${files.map(opt).join("")}</optgroup>` : ""}<optgroup label="Headline favourites">${["Anton", "Bebas Neue", "Oswald", "Archivo Black", "Montserrat", "Black Ops One", "Barlow Condensed", "Kanit"].concat(picks).filter((n, i, a) => FONT_LIB[n] && a.indexOf(n) === i).map(opt).join("")}</optgroup><optgroup label="Top 100 on Google Fonts">${top.map(ranked).join("")}</optgroup>${google.length ? `<optgroup label="Added from Google Fonts">${google.map(opt).join("")}</optgroup>` : ""}`;
+}
+// Weight buttons, showing only the weights this font really has. Each label is drawn in its own weight.
+function weightButtons(name, cur, attr, sameLabel) {
+  const ws = fontInfo(name).weights, active = cur ? pickWeight(name, cur) : null;
+  if (ws.length < 2 && !sameLabel) return `<span class="hint">${esc(name)} comes in one weight only.</span>`;
+  return `<div class="wts">${sameLabel ? `<button data-${attr}="" aria-pressed="${!cur}">${sameLabel}</button>` : ""}${ws.map(w => `<button data-${attr}="${w}" aria-pressed="${active === w}" style="font-weight:${w}">${WEIGHT_NAMES[w] || w}</button>`).join("")}</div>`;
+}
+
+// ----- RGB color editor: preview + picker + hex + one slider and number per channel, all kept in sync.
+const hexToRgb = h => { const m = /^#?([0-9a-f]{6})$/i.exec(String(h || "").trim()); if (!m) return [255, 255, 255]; const n = parseInt(m[1], 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+const rgbToHex = a => "#" + a.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("").toUpperCase();
+function rgbEditorHtml(hex) {
+  hex = rgbToHex(hexToRgb(hex)); const v = hexToRgb(hex), names = ["Red", "Green", "Blue"];
+  return `<div class="rgb">
+    <div class="rgb-top"><label class="rgb-prev" style="background:${hex}" title="Open the color picker"><input type="color" class="rgb-pick" value="${hex.toLowerCase()}" aria-label="Pick a color"></label>
+      <div class="field"><label>Hex</label><input type="text" class="rgb-hex" value="${hex}" maxlength="7" spellcheck="false" aria-label="Hex color"></div>
+      <div class="rgb-css" aria-hidden="true">rgb(${v.join(", ")})</div></div>
+    ${["R", "G", "B"].map((c, i) => `<div class="rgb-row"><span class="rgb-l">${c}</span><input type="range" class="rgb-s" data-ch="${i}" min="0" max="255" value="${v[i]}" aria-label="${names[i]}"><input type="number" class="rgb-n" data-ch="${i}" min="0" max="255" value="${v[i]}" aria-label="${names[i]} value, 0 to 255"></div>`).join("")}
+  </div>`;
+}
+function bindRgb(root, onChange) {
+  if (!root) return;
+  let rgb = hexToRgb(root.querySelector(".rgb-hex").value);
+  const tracks = () => root.querySelectorAll(".rgb-s").forEach(s => {
+    const i = +s.dataset.ch, lo = [...rgb], hi = [...rgb]; lo[i] = 0; hi[i] = 255;
+    s.style.setProperty("--track", `linear-gradient(to right, rgb(${lo.join(",")}), rgb(${hi.join(",")}))`);
+  });
+  const paint = skip => {
+    const hex = rgbToHex(rgb);
+    root.querySelector(".rgb-prev").style.background = hex;
+    root.querySelector(".rgb-css").textContent = `rgb(${rgb.join(", ")})`;
+    if (skip !== "pick") root.querySelector(".rgb-pick").value = hex.toLowerCase();
+    if (skip !== "hex") root.querySelector(".rgb-hex").value = hex;
+    root.querySelectorAll(".rgb-s").forEach(s => { if (skip !== "s" + s.dataset.ch) s.value = rgb[+s.dataset.ch]; });
+    root.querySelectorAll(".rgb-n").forEach(n => { if (skip !== "n" + n.dataset.ch) n.value = rgb[+n.dataset.ch]; });
+    tracks(); onChange(hex);
+  };
+  root.querySelectorAll(".rgb-s").forEach(s => s.oninput = () => { rgb[+s.dataset.ch] = +s.value; paint("s" + s.dataset.ch); });
+  root.querySelectorAll(".rgb-n").forEach(n => {
+    n.oninput = () => { if (n.value === "") return; rgb[+n.dataset.ch] = Math.max(0, Math.min(255, Math.round(+n.value) || 0)); paint("n" + n.dataset.ch); };
+    n.onchange = () => { n.value = rgb[+n.dataset.ch]; };
+  });
+  root.querySelector(".rgb-hex").oninput = e => { const m = /^#?([0-9a-f]{6})$/i.exec(e.target.value.trim()); if (m) { rgb = hexToRgb(m[1]); paint("hex"); } };
+  root.querySelector(".rgb-hex").onchange = e => { e.target.value = rgbToHex(rgb); };
+  root.querySelector(".rgb-pick").oninput = e => { rgb = hexToRgb(e.target.value); paint("pick"); };
+  tracks();
+}
+
+// ----- add any Google Font by name
+const titleCase = s => s.toLowerCase().replace(/\b[a-z]/g, ch => ch.toUpperCase());
+function probeCss(url) {
+  return new Promise(res => {
+    const l = document.createElement("link"); let done = false;
+    const end = ok => { if (done) return; done = true; if (!ok) l.remove(); res(ok); };
+    l.rel = "stylesheet"; l.href = url; l.onload = () => end(true); l.onerror = () => end(false);
+    document.head.appendChild(l); setTimeout(() => end(false), 10000);
+  });
+}
+async function addGoogleFont(input) {
+  const typed = input.trim().replace(/\s+/g, " ");
+  if (!/^[A-Za-z0-9][A-Za-z0-9 ]{0,49}$/.test(typed)) throw new Error("Type a font name using letters, numbers and spaces.");
+  for (const name of [...new Set([typed, titleCase(typed)])]) {
+    const known = Object.keys(FONT_LIB).concat(Object.keys(S.customFonts)).find(n => n.toLowerCase() === name.toLowerCase());
+    if (known) return known;
+    const weights = [];
+    for (const w of [400, 700, 900]) if (await probeCss(fontCssUrl(name, w === 400 ? null : [w]))) weights.push(w);
+    if (weights.length) {
+      S.customFonts[name] = { fb: "sans-serif", weights, def: weights.includes(700) ? 700 : weights[weights.length - 1] };
+      cssLoaded.add(name); loadFont(name);
+      const list = Object.entries(S.customFonts).filter(([, f]) => !f.local).map(([n, f]) => ({ name: n, weights: f.weights }));
+      try { S.status = await API.post("/api/settings", { fonts: list }); } catch (e) { toast("Font added for now, but couldn't be saved: " + e.message); }
+      return name;
+    }
+  }
+  throw new Error(`Google Fonts has no font called "${typed}". Check the exact name on fonts.google.com.`);
+}
+
+// Keep word styles attached to the right words while the headline is edited.
+function syncHlWords(p, oldWords) {
+  const nw = hlWordList(p), old = p.hl.words || [];
+  if (nw.length === oldWords.length) { p.hl.words = old.slice(0, nw.length); return; }
+  const used = new Set();
+  p.hl.words = nw.map((w, i) => {
+    const j = old[i] && oldWords[i] === w ? i : oldWords.findIndex((ow, k) => ow === w && old[k] && !used.has(k));
+    if (j >= 0 && old[j] && !used.has(j)) { used.add(j); return old[j]; }
+    return null;
+  });
+}
+function renderHlEditor() {
+  const box = document.getElementById("hl-ed"); if (!box) return; const p = S.cur;
+  if (!p.hl) normalize(p);
+  const hl = p.hl;
+  box.innerHTML = `
+    <div class="field"><label for="headline">Headline (stays on screen)</label><textarea id="headline" rows="2" placeholder="TOP 5&#10;KEEPER BLUNDERS">${esc(p.headline)}</textarea><span class="hint">Press Enter to start a new line. Long lines also wrap on their own.</span></div>
+    <div class="row"><div class="field"><label for="hl-font">Font</label><select id="hl-font">${fontOptions(hl.font)}</select></div>
+      <div class="field" style="max-width:120px"><label for="hl-size">Size <span id="hl-size-v">${hl.size}</span></label><input type="range" id="hl-size" min="30" max="110" step="1" value="${hl.size}"></div></div>
+    <div class="sect"><span class="lbl">Weight</span><div id="hl-wt">${weightButtons(hl.font, hl.weight || fontInfo(hl.font).def, "hlw")}</div></div>
+    <details id="font-add" ${S.fontsOpen ? "open" : ""}><summary>Add more fonts</summary><div class="sect">
+      <span class="lbl">Search your Google Fonts folder</span>
+      <input type="text" id="lib-q" placeholder="Search by name, e.g. bungee" aria-label="Search your Google Fonts folder" autocomplete="off">
+      <div id="lib-res" class="libres"></div>
+      <span class="lbl" style="margin-top:6px">Or drop font files</span>
+      <div class="drop" id="font-drop">${I.up}<div>Drop font files you downloaded: .ttf, .otf, or the whole .zip from Google Fonts</div><button class="btn sm" id="font-browse">Choose font files</button></div>
+      <span class="status" id="font-st" aria-live="polite"></span>
+      <span class="lbl">Or load one from the Google Fonts website by name</span>
+      <div class="copyrow"><input type="text" id="gf-name" placeholder="e.g. Rubik, Bungee, Fjalla One" aria-label="Google Font name"><button class="btn sm" id="gf-add">Add</button></div>
+      <span class="hint" id="gf-st">Type the name exactly as fonts.google.com shows it.</span></div></details>
+    <label class="row"><input type="checkbox" id="hl-caps" ${hl.caps ? "checked" : ""}> ALL CAPS</label>
+    <div class="sect"><span class="lbl">Text color</span><div class="swatches">${swatchRow("hlc", hl.color)}</div><div id="rgb-text">${rgbEditorHtml(hl.color)}</div></div>
+    ${p.videoArea === "bands" ? `<div class="sect"><span class="lbl">Section color (top and bottom)</span><div class="swatches">${swatchRow("bandc", p.bandColor)}</div><div id="rgb-band">${rgbEditorHtml(p.bandColor)}</div></div>` :
+    `<div class="sect"><span class="lbl">Box behind the headline</span><div class="swatches"><button class="sw sw-none" data-hlb="" aria-label="No box" aria-pressed="${!hl.bg}">✕</button>${swatchRow("hlb", hl.bg)}</div>
+      ${hl.bg ? `<div id="rgb-box">${rgbEditorHtml(hl.bg)}</div>` : '<span class="hint">No box: the headline gets a black outline so it stays readable. Pick a color to add a box.</span>'}</div>`}
+    <div class="sect"><span class="lbl">Style single words</span><div id="hl-words" class="sect"></div></div>`;
+  const q = s => box.querySelector(s), redraw = () => { touch(); drawNow(); };
+  q("#headline").oninput = e => { const old = hlWordList(p); p.headline = e.target.value; syncHlWords(p, old); redraw(); renderHlWords(); };
+  q("#hl-font").onchange = e => { hl.font = e.target.value; loadFont(hl.font); hl.weight = fontInfo(hl.font).def; redraw(); q("#hl-wt").innerHTML = weightButtons(hl.font, hl.weight, "hlw"); bindWeights(); renderHlWords(); };
+  q("#hl-size").oninput = e => { hl.size = +e.target.value; q("#hl-size-v").textContent = hl.size; redraw(); };
+  q("#hl-caps").onchange = e => { hl.caps = e.target.checked; redraw(); renderHlWords(); };
+  const bindWeights = () => box.querySelectorAll("#hl-wt [data-hlw]").forEach(b => b.onclick = () => { hl.weight = +b.dataset.hlw; redraw(); box.querySelectorAll("#hl-wt [data-hlw]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+  bindWeights();
+  q("#gf-add").onclick = async () => {
+    const st = q("#gf-st"), name = q("#gf-name").value; if (!name.trim()) return;
+    q("#gf-add").disabled = true; st.className = "hint"; st.textContent = "Looking it up on Google Fonts…";
+    try { const n = await addGoogleFont(name); hl.font = n; hl.weight = fontInfo(n).def; redraw(); toast(`${n} added`); renderHlEditor(); q("#font-add") && (q("#font-add").open = false); }
+    catch (e) { st.className = "status err"; st.textContent = e.message; q("#gf-add").disabled = false; }
+  };
+  q("#gf-name").onkeydown = e => { if (e.key === "Enter") q("#gf-add").click(); };
+  const doUpload = async files => {
+    const st = q("#font-st"); if (!files || !files.length) return;
+    st.className = "status"; st.textContent = "Reading font files…";
+    try {
+      const r = await uploadFontFiles(files);
+      if (r.added.length) { hl.font = r.added[0]; hl.weight = fontInfo(hl.font).def; redraw(); }
+      const msg = r.added.length ? `Added ${r.added.join(", ")} (${r.faces} weight${r.faces === 1 ? "" : "s"}).` : "No new fonts added.";
+      toast(msg); renderHlEditor();
+      const st2 = document.getElementById("font-st"); if (st2) { st2.textContent = msg + (r.skipped.length ? " Skipped: " + r.skipped.join(", ") + "." : ""); document.getElementById("font-add").open = true; }
+    } catch (e) { st.className = "status err"; st.textContent = e.message; }
+  };
+  q("#font-add").ontoggle = e => { S.fontsOpen = e.target.open; if (S.fontsOpen) searchLib(""); };
+  let libT = 0;
+  const searchLib = async query => {
+    const res = q("#lib-res"); if (!res) return;
+    try {
+      const r = await API.get(`/api/library?q=${encodeURIComponent(query)}&limit=30`);
+      if (!r.found) { res.innerHTML = '<p class="hint">Clipdeck can\'t find your downloaded Google Fonts folder. Set it in Settings.</p>'; return; }
+      res.innerHTML = (query ? "" : `<p class="hint">${r.count.toLocaleString()} fonts in your folder. Showing display fonts; type to search all of them.</p>`) +
+        (r.results.length ? r.results.map(f => `<div class="libitem"><span class="libname">${esc(f.family)}</span><span class="card-meta">${esc(f.category)}</span>${f.added ? '<span class="got">✓ added</span>' : `<button class="btn sm" data-libdir="${esc(f.dir)}">Add</button>`}</div>`).join("") : `<p class="hint">No font called "${esc(query)}" in your folder.</p>`);
+      res.querySelectorAll("[data-libdir]").forEach(b => b.onclick = async () => {
+        b.disabled = true; b.textContent = "Adding…";
+        try {
+          const r2 = await API.post("/api/library/add", { dir: b.dataset.libdir });
+          registerLocalFonts(r2.fonts);
+          if (r2.added.length) { hl.font = r2.added[0]; hl.weight = fontInfo(hl.font).def; redraw(); }
+          toast(r2.added.length ? `Added ${r2.added.join(", ")}` : "Already added");
+          const keep = q("#lib-q").value; renderHlEditor();
+          const nq = document.getElementById("lib-q"); if (nq) { nq.value = keep; nq.dispatchEvent(new Event("input")); }
+        } catch (e) { toast(e.message); b.disabled = false; b.textContent = "Add"; }
+      });
+    } catch (e) { res.innerHTML = `<p class="status err">${esc(e.message)}</p>`; }
+  };
+  q("#lib-q").oninput = e => { clearTimeout(libT); const v = e.target.value; libT = setTimeout(() => searchLib(v), 180); };
+  if (S.fontsOpen) searchLib("");
+  q("#font-browse").onclick = () => { const fi = document.createElement("input"); fi.type = "file"; fi.multiple = true; fi.accept = ".ttf,.otf,.woff,.woff2,.zip"; fi.onchange = () => doUpload(fi.files); fi.click(); };
+  const fd = q("#font-drop");
+  fd.ondragover = e => { e.preventDefault(); fd.classList.add("over"); }; fd.ondragleave = () => fd.classList.remove("over");
+  fd.ondrop = e => { e.preventDefault(); fd.classList.remove("over"); doUpload(e.dataTransfer.files); };
+  const markSw = (attr, c) => box.querySelectorAll(`[data-${attr}]`).forEach(b => b.setAttribute("aria-pressed", (b.dataset[attr] || "").toLowerCase() === (c || "").toLowerCase()));
+  bindRgb(q("#rgb-text .rgb"), hex => { hl.color = hex; markSw("hlc", hex); redraw(); });
+  box.querySelectorAll("[data-hlc]").forEach(b => b.onclick = () => { hl.color = b.dataset.hlc; redraw(); renderHlEditor(); });
+  bindRgb(q("#rgb-box .rgb"), hex => { hl.bg = hex; markSw("hlb", hex); redraw(); });
+  bindRgb(q("#rgb-band .rgb"), hex => { p.bandColor = hex; markSw("bandc", hex); redraw(); });
+  box.querySelectorAll("[data-bandc]").forEach(b => b.onclick = () => { p.bandColor = b.dataset.bandc; redraw(); renderHlEditor(); });
+  box.querySelectorAll("[data-hlb]").forEach(b => b.onclick = () => { hl.bg = b.dataset.hlb; redraw(); renderHlEditor(); });
+  renderHlWords();
+}
+function renderHlWords() {
+  const box = document.getElementById("hl-words"); if (!box) return; const p = S.cur, hl = p.hl, words = hlWordList(p);
+  S.hlSel = new Set([...(S.hlSel || [])].filter(i => i < words.length));
+  const sel = [...S.hlSel].sort((a, b) => a - b), one = sel.length ? (hl.words[sel[0]] || {}) : null;
+  if (!words.length) { box.innerHTML = '<p class="hint">Type a headline first.</p>'; return; }
+  const wFont = one && (one.font || hl.font);
+  const brk = hlBreaks(p);
+  box.innerHTML = `<div class="wchips">${words.map((w, i) => (brk.has(i) ? '<span class="wbreak" aria-hidden="true"></span>' : "") + (() => { const st = hl.words[i] || {}; const custom = st.font || st.weight || (st.scale && st.scale !== 1); return `<button class="wchip" data-wi="${i}" aria-pressed="${S.hlSel.has(i)}" style="${st.color ? `--wc:${st.color};` : ""}${st.weight ? `font-weight:${st.weight}` : ""}" title="${custom ? "Has its own style" : ""}">${esc(hl.caps ? w.toUpperCase() : w)}${custom ? " •" : ""}</button>`; })()).join("")}</div>
+    <p class="hint">${sel.length ? `${sel.length} word${sel.length > 1 ? "s" : ""} selected. The settings below change only ${sel.length > 1 ? "those words" : "that word"}.` : "Tap one or more words, then give them their own color, font, weight or size."}</p>
+    ${sel.length ? `<div class="wpanel">
+      <div class="sect"><span class="lbl">Color</span><div class="swatches"><button class="sw sw-none" data-wc="" aria-label="Same as headline" aria-pressed="${!one.color}" title="Same as headline">✕</button>${swatchRow("wc", one.color)}</div><div id="rgb-word">${rgbEditorHtml(one.color || hl.color)}</div></div>
+      <div class="row"><div class="field"><label for="w-font">Font</label><select id="w-font"><option value="">Same as headline</option>${fontOptions(one.font)}</select></div>
+        <div class="field" style="max-width:120px"><label for="w-size">Size <span id="w-size-v">${Math.round((one.scale || 1) * 100)}%</span></label><input type="range" id="w-size" min="50" max="180" step="5" value="${Math.round((one.scale || 1) * 100)}"></div></div>
+      <div class="sect"><span class="lbl">Weight</span>${weightButtons(wFont, one.weight, "ww", "Same as headline")}</div>
+      <div class="row"><button class="btn sm ghost" id="w-reset">Reset ${sel.length > 1 ? "these words" : "this word"}</button><button class="btn sm" id="w-done">Done</button></div></div>` : ""}`;
+  const q = s => box.querySelector(s);
+  const apply = patch => {
+    sel.forEach(i => { const st = Object.assign({}, hl.words[i] || {}, patch); Object.keys(st).forEach(k => (st[k] === "" || st[k] == null || (k === "scale" && st[k] === 1)) && delete st[k]); hl.words[i] = Object.keys(st).length ? st : null; });
+    touch(); drawNow();
+  };
+  box.querySelectorAll("[data-wi]").forEach(b => b.onclick = () => { const i = +b.dataset.wi; S.hlSel.has(i) ? S.hlSel.delete(i) : S.hlSel.add(i); renderHlWords(); });
+  if (!sel.length) return;
+  box.querySelectorAll("[data-wc]").forEach(b => b.onclick = () => { apply({ color: b.dataset.wc || null }); renderHlWords(); });
+  bindRgb(q("#rgb-word .rgb"), hex => {
+    apply({ color: hex });
+    box.querySelectorAll("[data-wc]").forEach(b => b.setAttribute("aria-pressed", (b.dataset.wc || "").toLowerCase() === hex.toLowerCase()));
+    sel.forEach(i => { const chip = box.querySelector(`[data-wi="${i}"]`); if (chip) chip.style.setProperty("--wc", hex); });
+  });
+  q("#w-font").onchange = e => { if (e.target.value) loadFont(e.target.value); apply({ font: e.target.value, weight: null }); renderHlWords(); };
+  q("#w-size").oninput = e => { q("#w-size-v").textContent = e.target.value + "%"; apply({ scale: +e.target.value / 100 }); };
+  q("#w-size").onchange = () => renderHlWords();
+  box.querySelectorAll("[data-ww]").forEach(b => b.onclick = () => { apply({ weight: b.dataset.ww ? +b.dataset.ww : null }); renderHlWords(); });
+  q("#w-reset").onclick = () => { sel.forEach(i => hl.words[i] = null); touch(); drawNow(); renderHlWords(); };
+  q("#w-done").onclick = () => { S.hlSel.clear(); renderHlWords(); };
+}
+function pinnedComment() {
+  const p = S.cur, it = items(p); if (!it.length) return "";
+  const byRank = [...it].sort((a, b) => rankOf(p, a) - rankOf(p, b));
+  return `${(p.headline || p.name).replace(/\s*\n\s*/g, " ")}\n` + byRank.map(s => `#${rankOf(p, s)} ${s.label || s.text}`).join("\n") + `\n\nWhat would you put at #1?`;
+}
+
+function renderInspector() {
+  const R = document.getElementById("right"); if (!R) return; const p = S.cur, s = p.scenes[S.sel];
+  if (!s) { R.innerHTML = `<p class="empty">Nothing here yet. Add a rank from the timeline.</p>`; return; }
+  const m = s.mediaId && S.media[s.mediaId], visual = projMedia().filter(x => x.type !== "audio");
+  const r = rankOf(p, s), N = items(p).length;
+  const head = s.kind === "item" ? `<span class="rankpill">#${r}</span><span class="card-meta">of ${N} · set by position</span>` : `<span class="kindpill">${s.kind}</span><span class="card-meta">${s.kind === "hook" ? "Plays first, before any rank" : "Plays after the last rank"}</span>`;
+  R.innerHTML = `<div class="sect-h"><div class="row">${head}</div></div>
+    ${s.kind === "item" ? `<div class="field"><label for="s-label">Name on the rank list</label><input type="text" id="s-label" value="${esc(s.label)}" placeholder="e.g. The Punch" maxlength="40"></div>` : ""}
+    <div class="field"><label for="s-text">Caption</label><textarea id="s-text" placeholder="${s.kind === "item" ? "What happens in this clip" : s.kind === "hook" ? "Tease #1 so viewers stay" : "Ask viewers to comment"}">${esc(s.text)}</textarea></div>
+    <div class="field"><label for="s-dur">Length (seconds, ${MAX_CLIP} max)</label><input type="number" id="s-dur" min="0.5" max="${MAX_CLIP}" step="0.5" value="${s.dur}"></div>
+    <div class="sect"><span class="lbl">Clip</span>
+      <select id="s-media" aria-label="Clip"><option value="">No clip (color background)</option>${visual.map(x => `<option value="${x.id}" ${x.id === s.mediaId ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>
+      <button class="btn sm" id="s-up">${I.up}Upload a clip for this ${s.kind === "item" ? "rank" : s.kind}</button>
+      <div class="field"><label for="s-url">Source link</label><input type="text" inputmode="url" id="s-url" value="${esc(s.src.url)}" placeholder="TikTok, YouTube, Instagram or Facebook link"></div>
+      ${cleanUrl(s.src.url) ? `<div class="row fetchrow"><button class="btn sm ${m ? "ghost" : ""}" id="s-fetch" data-fetch-id="${s.id}" ${ACTIVE.includes((S.jobs[s.id] || {}).state) ? "disabled" : ""}>${m ? "Fetch again from link" : "Fetch clip from link"}</button><span class="jobwrap" id="job-${s.id}">${jobLine(s.id)}</span></div>` : ""}
+      ${m && m.type === "video" ? `<div class="cut-sum"><span>Using</span><b>${fmt(s.trim)} → ${fmt(s.trim + s.dur)}</b><span>of a ${fmt(m.duration)} clip</span></div>
+        <button class="btn sm primary" id="s-cut">Cut clip</button>` : ""}
+      ${m ? `<div class="field"><label for="s-zoom">Zoom</label><input type="range" id="s-zoom" min="1" max="2.5" step="0.05" value="${s.zoom}"></div>
+        <div class="field"><label for="s-pan">Frame left ↔ right</label><input type="range" id="s-pan" min="-1" max="1" step="0.05" value="${s.panX}"></div>
+        <div class="field"><label for="s-pany">Frame up ↕ down</label><input type="range" id="s-pany" min="-1" max="1" step="0.05" value="${s.panY || 0}"></div>
+        <label class="row"><input type="checkbox" id="s-mot" ${s.motion ? "checked" : ""}> Slow push-in</label>` : ""}
+    </div>
+    ${!m ? `<div class="sect"><span class="lbl">Background</span><div class="swatches">${BGS.map(c => `<button class="sw" style="background:${c}" aria-label="Color ${c}" aria-pressed="${c === s.bg}" data-bg="${c}"></button>`).join("")}</div></div>` : ""}
+    <div class="row">${s.kind === "item" ? `<button class="btn sm" id="s-hi" ${r === 1 ? "disabled" : ""}>Rank higher</button><button class="btn sm" id="s-lo" ${r === N ? "disabled" : ""}>Rank lower</button><button class="btn sm" id="s-dup" ${full(p) ? "disabled" : ""}>Duplicate</button>` : ""}<button class="btn sm danger" id="s-del">Delete</button></div>`;
+  const q = id => R.querySelector(id);
+  const upd = (fn, tl = true) => { fn(); touch(); if (tl) renderTimeline(); still(); };
+  const lb = q("#s-label"); if (lb) lb.oninput = e => upd(() => s.label = e.target.value);
+  q("#s-text").oninput = e => upd(() => s.text = e.target.value);
+  q("#s-dur").onchange = e => { upd(() => s.dur = Math.max(0.5, Math.min(MAX_CLIP, +e.target.value || 3))); if (+e.target.value > MAX_CLIP) { e.target.value = MAX_CLIP; toast(`Clips are ${MAX_CLIP} seconds at most.`); } updateClock(); };
+  q("#s-media").onchange = e => { upd(() => { s.mediaId = e.target.value || null; s.trim = 0; onVideoSet(S.sel); }); renderInspector(); };
+  const ct = q("#s-cut"); if (ct) ct.onclick = () => openCutter(S.sel);
+  q("#s-up").onclick = () => pickFiles(true);
+  const tr = q("#s-trim"); if (tr) tr.oninput = e => { s.trim = +e.target.value; q("#trim-l").textContent = `Start at ${s.trim.toFixed(1)} s of ${m.duration.toFixed(1)} s`; S.t = sceneStart(S.sel); upd(() => {}, false); };
+  const fit = q("#s-fit"); if (fit) fit.onclick = () => { upd(() => s.dur = Math.max(0.5, Math.min(MAX_CLIP, Math.round((m.duration - s.trim) * 10) / 10))); renderInspector(); };
+  const z = q("#s-zoom"); if (z) z.oninput = e => upd(() => s.zoom = +e.target.value, false);
+  const pn = q("#s-pan"); if (pn) pn.oninput = e => upd(() => s.panX = +e.target.value, false);
+  const py = q("#s-pany"); if (py) py.oninput = e => upd(() => s.panY = +e.target.value, false);
+  const mo = q("#s-mot"); if (mo) mo.onchange = e => upd(() => s.motion = e.target.checked, false);
+  R.querySelectorAll("[data-bg]").forEach(b => b.onclick = () => { upd(() => s.bg = b.dataset.bg); renderInspector(); });
+  const swapRank = target => {
+    const other = items(p).find(x => rankOf(p, x) === target); if (!other) return;
+    if (p.order === "shuffle") { other.rank = s.rank; s.rank = target; touch(); renderInspector(); renderTimeline(); still(); if (S.tab === "style") renderLeft(); return; }
+    moveScene(S.sel, p.scenes.indexOf(other));
+  };
+  const hi = q("#s-hi"); if (hi) hi.onclick = () => swapRank(r - 1);
+  const lo = q("#s-lo"); if (lo) lo.onclick = () => swapRank(r + 1);
+  const su = q("#s-url"); if (su) su.oninput = e => { s.src.url = e.target.value; const pl = platformOf(e.target.value); su.classList.toggle("bad-input", !!pl && pl.k === "bad"); touch(); renderTimeline(); };
+  if (su) su.onchange = () => renderInspector();
+  const sf = q("#s-fetch"); if (sf) sf.onclick = () => fetchScene(s);
+  const dp = q("#s-dup"); if (dp) dp.onclick = () => { if (full(p)) return; p.scenes.splice(S.sel + 1, 0, { ...s, id: uid(), src: { ...s.src }, rank: items(p).length + 1 }); S.sel++; touch(); renderInspector(); renderTimeline(); still(); };
+  const del = q("#s-del");
+  del.onclick = () => {
+    if (del.dataset.armed) { p.scenes.splice(S.sel, 1); S.sel = Math.max(0, Math.min(S.sel, p.scenes.length - 1)); S.t = Math.min(S.t, totalDur()); touch(); renderLeft(); renderInspector(); renderTimeline(); still(); }
+    else { del.dataset.armed = "1"; del.textContent = "Confirm delete"; setTimeout(() => { if (del.isConnected) { delete del.dataset.armed; del.textContent = "Delete"; } }, 3000); }
+  };
+}
+function moveScene(from, to) {
+  const sc = S.cur.scenes; if (to < 0 || to >= sc.length || from === to) return;
+  if (sc[from].kind !== "item" || sc[to].kind !== "item") return; // hook and outro stay put
+  const [x] = sc.splice(from, 1); sc.splice(to, 0, x); S.sel = to; S.t = sceneStart(to) + 0.01;
+  touch(); renderInspector(); renderTimeline(); still();
+}
+function addScene(kind, quiet) {
+  const p = S.cur, nHook = p.scenes.filter(x => x.kind === "hook").length;
+  if (kind === "item") {
+    if (full(p)) { if (!quiet) toast(`A ranking holds ${MAX_RANKS} items at most.`); return; }
+    const it = items(p), s = mk("item", "", 4, BGS[it.length % BGS.length]);
+    s.rank = it.length + 1;
+    // A new item becomes the lowest rank: first in a countdown, last when starting at #1,
+    // and a random spot in a shuffle (never after #1 when #1 is saved for last).
+    let idx;
+    if (!it.length) idx = nHook;
+    else if (p.order === "shuffle") { const slots = p.keepTop ? it.length : it.length + 1; idx = p.scenes.indexOf(it[0]) + Math.floor(Math.random() * slots); }
+    else idx = p.order === "down" ? p.scenes.indexOf(it[0]) : p.scenes.indexOf(it[it.length - 1]) + 1;
+    p.scenes.splice(idx, 0, s); S.sel = idx;
+  } else if (kind === "hook") { p.scenes.unshift(mk("hook", "Wait for number one", 2.5, BGS[5])); S.sel = 0; }
+  else { p.scenes.push(mk("outro", "Agree with the list? Comment below", 2.5, BGS[4])); S.sel = p.scenes.length - 1; }
+  if (quiet) return;
+  S.t = sceneStart(S.sel) + 0.01; touch(); renderLeft(); renderInspector(); renderTimeline(); still();
+  setTimeout(() => (document.getElementById("s-label") || document.getElementById("s-text"))?.focus(), 0);
+}
+
+const PX = 34; // px per second
+function renderTimeline() {
+  const T = document.getElementById("track"); if (!T) return; const p = S.cur, tot = totalDur();
+  const hasHook = p.scenes.some(s => s.kind === "hook"), hasOut = p.scenes.some(s => s.kind === "outro");
+  document.getElementById("tl-actions").innerHTML = `<span class="card-meta">${items(p).length} of ${MAX_RANKS} ranks</span><button class="btn sm" id="add-item" ${full(p) ? "disabled" : ""}>${I.plus}Add rank</button>${hasHook ? "" : `<button class="btn sm ghost" id="add-hook">Add hook</button>`}${hasOut ? "" : `<button class="btn sm ghost" id="add-out">Add outro</button>`}<span class="hint">Drag ranks to reorder</span>`;
+  document.getElementById("add-item").onclick = () => addScene("item");
+  const ah = document.getElementById("add-hook"); if (ah) ah.onclick = () => addScene("hook");
+  const ao = document.getElementById("add-out"); if (ao) ao.onclick = () => addScene("outro");
+  let ruler = ""; for (let s = 0; s <= Math.ceil(tot); s += tot > 40 ? 5 : 2) ruler += `<span style="left:${s * PX}px">${s}s</span>`;
+  T.innerHTML = `<div class="ruler" id="ruler">${ruler}</div>` + p.scenes.map((s, i) => {
+    const m = s.mediaId && S.media[s.mediaId];
+    const bg = m && m.type === "image" ? `<img class="bgimg" alt="" src="${mediaEl(m.id).url}">` : m && m.type === "video" ? `<video class="bgimg" muted preload="metadata" src="${mediaEl(m.id).url}#t=${s.trim + 0.3}"></video>` : "";
+    const top = s.kind === "item" ? `<span class="rk">#${rankOf(p, s)}</span>` : `<span class="kd">${s.kind.toUpperCase()}</span>`;
+    return `<button class="clip" ${s.kind === "item" ? 'draggable="true"' : ""} data-i="${i}" aria-selected="${i === S.sel}" style="width:${Math.max(48, s.dur * PX - 4)}px;background:${s.bg}">${bg}${top}<span class="ct">${esc(s.kind === "item" ? s.label || s.text || "Unnamed" : s.text)}</span><span class="cd">${s.src.url && !m ? "link · " : ""}${s.dur.toFixed(1)}s</span></button>`;
+  }).join("") + `<div class="playhead" id="ph"></div>`;
+  let dragFrom = -1;
+  T.querySelectorAll(".clip[data-i]").forEach(c => {
+    const i = +c.dataset.i;
+    c.onclick = () => { S.sel = i; if (S.playing) pause(); S.t = sceneStart(i) + 0.01; markSel(); renderInspector(); still(); };
+    c.ondblclick = () => { const m = S.media[p.scenes[i].mediaId]; if (m && m.type === "video") openCutter(i); };
+    c.ondragstart = e => { dragFrom = i; c.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; try { e.dataTransfer.setData("text/plain", String(i)); } catch (x) {} };
+    c.ondragend = () => { c.classList.remove("dragging"); T.querySelectorAll(".drop-on").forEach(x => x.classList.remove("drop-on")); };
+    c.ondragover = e => { if (dragFrom >= 0 && p.scenes[i].kind === "item") { e.preventDefault(); c.classList.add("drop-on"); } };
+    c.ondragleave = () => c.classList.remove("drop-on");
+    c.ondrop = e => { e.preventDefault(); if (dragFrom >= 0) moveScene(dragFrom, i); };
+  });
+  T.querySelector("#ruler").onclick = e => { const r = T.getBoundingClientRect(); seek((e.clientX - r.left) / PX); };
+  const ml = document.getElementById("mlane"), mm = p.music && S.media[p.music.mediaId];
+  ml.innerHTML = mm ? `${I.note.replace('width="26" height="26"', 'width="16" height="16"')}<span>${esc(mm.name)}</span><div class="music-bar" style="max-width:${tot * PX}px"></div>` : `<span class="hint">No background music. Add an audio file under Clips.</span>`;
+  movePlayhead(); updateClock();
+}
+function markSel() { document.querySelectorAll(".clip[data-i]").forEach(c => c.setAttribute("aria-selected", +c.dataset.i === S.sel)); }
+function movePlayhead() {
+  const ph = document.getElementById("ph"); if (!ph || !S.cur.scenes.length) return;
+  const hit = sceneAt(Math.min(S.t, totalDur() - 0.001));
+  ph.style.left = (S.t * PX + hit.i * 4) + "px";
+}
+
+// ---------- boot ----------
+document.getElementById("nav-dash").onclick = () => setView("dash");
+document.getElementById("nav-edit").onclick = () => S.cur && setView("edit");
+document.addEventListener("keydown", e => {
+  if (S.view !== "edit" || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) || document.querySelector(".modal")) return;
+  if (e.code === "Space") { e.preventDefault(); S.playing ? pause() : play(); }
+});
+document.getElementById("nav-set").onclick = () => setView("settings");
+(async () => {
+  renderDash();
+  try { S.status = await API.get("/api/status"); } catch (e) {}
+  try { S.projects = (await API.get("/api/projects")).map(normalize); }
+  catch (e) {
+    main.innerHTML = `<div class="view"><div class="dash"><header style="display:grid;gap:8px"><div class="eyebrow">Clipdeck</div><h1>Can't reach Clipdeck</h1><p class="lede">${esc(e.message)} Start Clipdeck again from its shortcut, then reload this page.</p></header></div></div>`;
+    return;
+  }
+  if (!S.projects.length) { const ex = exampleProject(); S.projects.push(ex); saveProject(ex, true); }
+  if (S.view === "dash") renderDash();
+  (S.status.fonts || []).forEach(f => { if (f && f.name && Array.isArray(f.weights) && f.weights.length) S.customFonts[f.name] = { fb: "sans-serif", weights: f.weights, def: f.weights.includes(700) ? 700 : f.weights[f.weights.length - 1] }; });
+  try { registerLocalFonts(await API.get("/api/fonts")); } catch (e) {}
+  S.projects.forEach(loadProjectFonts);
+  document.fonts.load("60px Anton").then(() => setTimeout(() => S.view === "dash" && renderDash(), 300));
+  // Came back from an automatic update: reopen what was being edited.
+  let back = null; try { back = JSON.parse(sessionStorage.getItem("cd-restore") || "null"); sessionStorage.removeItem("cd-restore"); } catch (e) {}
+  if (back) {
+    if (back.id && S.projects.some(p => p.id === back.id)) {
+      if (back.tab) S.tab = back.tab;
+      await openProject(back.id);
+      if (back.view === "settings") setView("settings");
+      else if (S.cur && back.sel < S.cur.scenes.length) { S.sel = back.sel; S.t = sceneStart(S.sel) + 0.01; renderInspector(); markSel(); still(); }
+    } else if (back.view === "settings") setView("settings");
+    toast("Clipdeck was updated");
+  }
+  watchForUpdates();
+})();
+
+// ---------- automatic updates ----------
+// The server reports a version made from Clipdeck's own files. When it changes, this page saves
+// your work and reloads itself (waiting if an export is running). If the server is restarting
+// for the update, the page simply waits until it's back.
+let seenVersion = null, updateBanner = null;
+function watchForUpdates() {
+  const check = async () => {
+    let r;
+    try { r = await API.get("/api/version"); } catch (e) { return; }
+    if (r.error) {
+      if (!updateBanner) { updateBanner = document.createElement("div"); updateBanner.className = "toast"; updateBanner.style.background = "var(--danger)"; updateBanner.style.color = "#fff"; document.body.appendChild(updateBanner); }
+      updateBanner.textContent = r.error; updateBanner.hidden = false;
+    } else if (updateBanner) updateBanner.hidden = true;
+    if (seenVersion === null) { seenVersion = r.v; return; }
+    if (r.v === seenVersion || EXP) return;
+    if (S.playing) pause();
+    for (const id of Object.keys(saveTimers)) { const p = S.projects.find(x => x.id === id); if (p) await saveProject(p, true); }
+    try { sessionStorage.setItem("cd-restore", JSON.stringify({ view: S.view, id: S.cur && S.cur.id, tab: S.tab, sel: S.sel })); } catch (e) {}
+    location.reload();
+  };
+  setInterval(check, 3000); check();
+}
+})();
+</script>
+</body>
+</html>

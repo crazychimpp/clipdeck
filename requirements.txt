@@ -1,0 +1,7 @@
+fastapi>=0.110
+uvicorn>=0.29
+python-multipart>=0.0.9
+imageio-ffmpeg>=0.5
+fonttools>=4.40
+brotli>=1.0
+yt-dlp[default,curl-cffi]
