@@ -1660,11 +1660,11 @@ async function openFullCutter(sid) {
       try {
         const r = await API.post("/api/source", { url: u, browser: p.browser || "" });
         if (r.source) Object.assign(st, { state: "done", source: r.source }); else { st.job = r.job; pollSources(); }
-      } catch (e) { Object.assign(st, { state: "error", error: e.message }); }
+      } catch (e) { Object.assign(st, { state: "error", error: e.code === 404 ? "Restart Clipdeck to use this: quit it, then open it again from your desktop." : e.message }); if (e.code === 404) { delete S.src[u]; oldServerBanner(); } }
       updateSrcUI(u);
     }
     if (!st.source) {
-      if (st.state === "error") return toast(st.error);
+      if (st.state === "error") { const msg = st.error; if (S.src[u] === st) delete S.src[u]; return toast(msg); }
       const box = modal(`<div class="cut-head"><h2>Full video · ${esc(sceneTag(p, s))}</h2><span class="card-meta">${esc((platformOf(u) || {}).n || "")}</span></div>
         <p class="hint">Clipdeck downloads the whole video once, so you can watch all of it and pick any ${MAX_CLIP} seconds. After that, changing the cut takes a few seconds and doesn't download again.</p>
         <div class="row fetchrow"><span class="jobwrap" id="fv-job" data-url="${esc(u)}">${srcLine(st)}</span></div>
@@ -2195,10 +2195,24 @@ document.getElementById("nav-set").onclick = () => setView("settings");
 // your work and reloads itself (waiting if an export is running). If the server is restarting
 // for the update, the page simply waits until it's back.
 let seenVersion = null, updateBanner = null;
+// The page on disk is newer than the server that's running (it was started before self-updating existed).
+let oldBanner = null;
+function oldServerBanner() {
+  if (oldBanner) return; S.oldServer = true;
+  oldBanner = document.createElement("div"); oldBanner.className = "toast"; oldBanner.setAttribute("role", "alert");
+  oldBanner.style.cssText = "background:var(--danger);color:#fff;display:flex;gap:10px;align-items:center;max-width:min(560px,92vw)";
+  oldBanner.innerHTML = `<span>Clipdeck was updated, but the old copy is still running, so new features won't work yet. Quit it, then open Clipdeck again from your desktop.</span><button class="btn sm" id="old-quit">Quit Clipdeck</button>`;
+  document.body.appendChild(oldBanner);
+  oldBanner.querySelector("#old-quit").onclick = async () => {
+    for (const id of Object.keys(saveTimers)) { const p = S.projects.find(x => x.id === id); if (p) await saveProject(p, true); }
+    await API.post("/api/shutdown").catch(() => {});
+    oldBanner.innerHTML = "<span>Clipdeck has quit. Open it again from the Clipdeck icon on your desktop.</span>";
+  };
+}
 function watchForUpdates() {
   const check = async () => {
     let r;
-    try { r = await API.get("/api/version"); } catch (e) { return; }
+    try { r = await API.get("/api/version"); } catch (e) { if (e.code === 404) oldServerBanner(); return; }
     if (r.error) {
       if (!updateBanner) { updateBanner = document.createElement("div"); updateBanner.className = "toast"; updateBanner.style.background = "var(--danger)"; updateBanner.style.color = "#fff"; document.body.appendChild(updateBanner); }
       updateBanner.textContent = r.error; updateBanner.hidden = false;
