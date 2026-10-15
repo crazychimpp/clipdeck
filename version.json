@@ -1,11 +1,11 @@
 {
-  "version": "2026.10.15.1727",
-  "built": "2026-10-15T17:27:23Z",
-  "notes": "Tells you when an old copy of Clipdeck is still running and needs a restart",
+  "version": "2026.10.15.1739",
+  "built": "2026-10-15T17:39:18Z",
+  "notes": "Links tab shows the selected rank's full video in the middle with the cut editor under it",
   "files": {
     "server.py": "2d86cc241951916f8377a6833ba7108877ac3b3f6f9ab41c45ee16072847e12c",
     "requirements.txt": "3fb0402dc82441ebcb1b9492437f83cbec0ede8fef2d617138283f86b054c844",
     "clipdeck.ico": "ffa4d0b40f01ed2ad333c2157dd8830513e9f7a64e62558834de4e5f2a69645f",
-    "static/index.html": "99206aaac6d1420f19a34dde38a24e5937c6b6cdbbaf6f3af081489902c93bd9"
+    "static/index.html": "08099b536fdb2ebd81924ea138866434c636056f3abb3ab7da79530d125b9fb7"
   }
 }
