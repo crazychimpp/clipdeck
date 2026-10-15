@@ -118,6 +118,7 @@ input[type=checkbox]{accent-color:var(--accent)}
 .src-empty{max-width:520px;margin:12vh auto 0;display:grid;gap:12px;text-align:center;justify-items:center}
 .src-empty .jobwrap{justify-content:center}
 .link-row{cursor:pointer}
+.c-status{min-width:150px;justify-content:flex-end}
 .transport{display:flex;gap:10px;align-items:center;justify-content:center;padding:10px;border-top:1px solid var(--line);flex-wrap:wrap}
 .tc{font-family:var(--f-mono);font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums;min-width:110px;text-align:center}
 .iconbtn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line-2);background:var(--raise);display:grid;place-items:center;padding:0}
@@ -1517,7 +1518,7 @@ function cutterUI(o) {
       <div class="field"><label for="c-a">Start</label><input type="text" id="c-a" inputmode="decimal"></div>
       <div class="field"><label for="c-b">End</label><input type="text" id="c-b" inputmode="decimal"></div>
       <div class="cut-len"><b id="c-len"></b><span>of ${MAX_CLIP} s max</span></div></div>
-    <div class="row"><button class="btn" id="c-play">${I.play}Play cut</button><button class="btn sm ghost" id="c-sa">Start here</button><button class="btn sm ghost" id="c-sb">End here</button>${o.extra || ""}${o.host ? `<button class="btn primary" id="c-ok" style="margin-left:auto">${esc(o.okLabel || "Use this cut")}</button>` : ""}</div>
+    <div class="row"><button class="btn" id="c-play">${I.play}Play cut</button><button class="btn sm ghost" id="c-sa">Start here</button><button class="btn sm ghost" id="c-sb">End here</button>${o.extra || ""}${o.host ? `<span class="jobwrap c-status" id="c-status" data-sid="${esc(o.sid || "")}" style="margin-left:auto">${o.status || ""}</span>` : ""}</div>
     ${o.host ? "" : `<div class="row" style="justify-content:flex-end"><button class="btn" id="c-cancel">Cancel</button><button class="btn primary" id="c-ok">${esc(o.okLabel || "Use this cut")}</button></div>`}`);
   let box;
   if (o.host) { box = o.host; box.innerHTML = `<div class="cutter-inline">${inner}</div>`; }
@@ -1571,20 +1572,21 @@ function cutterUI(o) {
     else seekTo(t);
     update();
   };
-  bar.onpointerup = bar.onpointercancel = () => { drag = null; };
+  const changed = () => { if (o.onChange) o.onChange(a, len); };
+  bar.onpointerup = bar.onpointercancel = () => { const k = drag && drag.k; drag = null; if (k && k !== "s") changed(); };
   const nudge = (which, e) => {
     const step = e.shiftKey ? 1 : 0.1, d = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0; if (!d) return;
-    e.preventDefault(); if (which === "l") { setStart(a + d, true); seekTo(a); } else { setEnd(a + len + d); seekTo(a + len - 0.05); } update();
+    e.preventDefault(); if (which === "l") { setStart(a + d, true); seekTo(a); } else { setEnd(a + len + d); seekTo(a + len - 0.05); } update(); changed();
   };
   hl.onkeydown = e => nudge("l", e); hr.onkeydown = e => nudge("r", e);
-  ia.onchange = () => { const t = parseT(ia.value); if (t == null || isNaN(t)) { toast("Type a time like 1:05 or 65."); } else { setStart(t, false); seekTo(a); } ia.blur(); update(); };
-  ib.onchange = () => { const t = parseT(ib.value); if (t == null || isNaN(t)) { toast("Type a time like 1:05 or 65."); } else { if (t - a > MAX_CLIP) toast(`Cuts are ${MAX_CLIP} s at most, so the start moved to ${fmt(t - MAX_CLIP)}.`); setEnd(t); seekTo(a + len - 0.05); } ib.blur(); update(); };
-  q("#c-sa").onclick = () => { setStart(v.currentTime, false); update(); };
-  q("#c-sb").onclick = () => { const t = v.currentTime; if (t < MIN) return toast("Move a little later in the video before setting the end."); setEnd(t); update(); };
+  ia.onchange = () => { const t = parseT(ia.value); if (t == null || isNaN(t)) { toast("Type a time like 1:05 or 65."); } else { setStart(t, false); seekTo(a); changed(); } ia.blur(); update(); };
+  ib.onchange = () => { const t = parseT(ib.value); if (t == null || isNaN(t)) { toast("Type a time like 1:05 or 65."); } else { if (t - a > MAX_CLIP) toast(`Cuts are ${MAX_CLIP} s at most, so the start moved to ${fmt(t - MAX_CLIP)}.`); setEnd(t); seekTo(a + len - 0.05); changed(); } ib.blur(); update(); };
+  q("#c-sa").onclick = () => { setStart(v.currentTime, false); update(); changed(); };
+  q("#c-sb").onclick = () => { const t = v.currentTime; if (t < MIN) return toast("Move a little later in the video before setting the end."); setEnd(t); update(); changed(); };
   playBtn.onclick = () => { if (looping) return stopLoop(); looping = true; seekTo(a); v.play().catch(() => {}); playBtn.innerHTML = I.pause + "Pause"; };
   box.querySelectorAll("[data-z]").forEach(b => b.onclick = () => { setView(b.dataset.z === "cut"); update(); });
   if (q("#c-cancel")) q("#c-cancel").onclick = closeModal;
-  q("#c-ok").onclick = () => o.onOk(a, len);
+  if (q("#c-ok")) q("#c-ok").onclick = () => o.onOk(a, len);
   const onKey = e => { if (e.key === "Escape" && !o.host) closeModal(); };
   document.addEventListener("keydown", onKey);
   box._cleanup = () => { alive = false; stripGen++; cancelAnimationFrame(raf2); v.pause(); v.removeAttribute("src"); v.load(); document.removeEventListener("keydown", onKey); };
@@ -1718,16 +1720,33 @@ function renderSrcView(force) {
   const len = b != null && !isNaN(b) && b > a ? b - a : MAX_CLIP;
   cutterUI({
     host: V, title: `${tag} · ${s.kind === "item" ? s.label || s.text || "Unnamed" : s.text || s.kind}`, sub: `${src.title || u} · ${fmt(D)}`, url: src.src, D, a, len,
-    okLabel: `Cut this onto ${tag}`, zoom: !!s.src.from,
-    onOk: (na, nl) => {
-      na = Math.round(na * 10) / 10; nl = Math.min(MAX_CLIP, Math.max(0.5, Math.floor(nl * 10 + 1e-6) / 10));
+    sid: s.id, zoom: !!s.src.from, status: jobLine(s.id) || (s.mediaId ? `<span class="job ok">On the timeline</span>` : ""),
+    onChange: (na, nl) => {
+      na = Math.round(na * 10) / 10; nl = Math.min(MAX_CLIP, Math.max(0.5, Math.round(nl * 10) / 10));
       if (na + nl > D) nl = Math.floor((D - na) * 10) / 10;
-      s.src.from = fmt(na); s.src.to = fmt(na + nl); touch();
+      s.src.from = fmt(na); s.src.to = fmt(na + nl);
       const fi = document.getElementById("from-" + s.id), ti = document.getElementById("to-" + s.id);
       if (fi) { fi.value = s.src.from; fi.classList.remove("bad-input"); } if (ti) { ti.value = s.src.to; ti.classList.remove("bad-input"); }
-      fetchScene(s, true).then(ok => ok && toast(`Cutting ${tag}: ${s.src.from} → ${s.src.to}`));
+      // Show it on the timeline right away: new length now, and if the new part sits inside the clip already there, play it from there.
+      const m = s.mediaId && S.media[s.mediaId], ms = m && m.source;
+      if (ms && ms.url === u && na >= ms.from - 0.01 && na + nl <= ms.to + 0.01) s.trim = Math.max(0, +(na - ms.from).toFixed(2));
+      s.dur = nl; touch(); renderTimeline(); updateClock(); still();
+      const cs = document.getElementById("c-status"); if (cs) cs.innerHTML = `<span class="job">Updating ${esc(tag)}…</span>`;
+      clearTimeout(autoCutT[s.id]);
+      autoCutT[s.id] = setTimeout(() => autoCut(p, s), 600);
     },
   });
+}
+// Cut the rank's clip from the kept full video after the cut stops changing. If a cut is already running, the newest one follows it.
+const autoCutT = {};
+function cutMatches(s) {
+  const m = s.mediaId && S.media[s.mediaId], ms = m && m.source; if (!ms) return false;
+  return ms.url === cleanUrl(s.src.url) && Math.abs(ms.from - parseT(s.src.from)) < 0.05 && Math.abs(ms.to - parseT(s.src.to)) < 0.05;
+}
+function autoCut(p, s) {
+  if (cutMatches(s)) { const cs = document.getElementById("c-status"); if (cs && cs.dataset.sid === s.id) cs.innerHTML = `<span class="job ok">On the timeline</span>`; return; }
+  if (ACTIVE.includes((S.jobs[s.id] || {}).state)) { S.jobs[s.id].again = true; return; }
+  fetchScene(s, true, true);
 }
 const ACTIVE = ["queued", "downloading", "merging", "cutting", "saving"];
 function sceneTag(p, s) { return s.kind === "item" ? "#" + rankOf(p, s) : s.kind.toUpperCase(); }
@@ -1741,17 +1760,18 @@ function jobLine(sid) {
 }
 function updateJobUI(sid) {
   const el = document.getElementById("job-" + sid); if (el) el.innerHTML = jobLine(sid);
+  const cs = document.getElementById("c-status"); if (cs && cs.dataset.sid === sid) { const j = S.jobs[sid] || {}; cs.innerHTML = j.state === "done" ? `<span class="job ok">On the timeline</span>` : jobLine(sid); }
   const busy = ACTIVE.includes((S.jobs[sid] || {}).state);
   document.querySelectorAll(`[data-fetch-id="${sid}"]`).forEach(b => b.disabled = busy);
 }
-async function fetchScene(s, quiet) {
+async function fetchScene(s, quiet, auto) {
   const p = S.cur, u = cleanUrl(s.src.url);
   if (!u) { if (!quiet) toast("Paste a link first."); return false; }
   const a = parseT(s.src.from), b = parseT(s.src.to);
   if (isNaN(a) || isNaN(b)) { toast("Fix the times first. Use 1:05 or 65."); return false; }
   if (ACTIVE.includes((S.jobs[s.id] || {}).state)) return false;
   const tag = sceneTag(p, s);
-  S.jobs[s.id] = { state: "queued", progress: 0, pid: p.id, tag };
+  S.jobs[s.id] = { state: "queued", progress: 0, pid: p.id, tag, auto: !!auto };
   updateJobUI(s.id);
   try {
     const r = await API.post("/api/fetch", { url: u, from: s.src.from, to: s.src.to, browser: p.browser || "", projectId: p.id, sceneId: s.id, label: tag + (s.label ? " " + s.label : "") });
@@ -1762,7 +1782,11 @@ async function fetchScene(s, quiet) {
 function applyJob(pid, sid, meta) {
   S.media[meta.id] = meta;
   const p = S.projects.find(x => x.id === pid), s = p && p.scenes.find(x => x.id === sid); if (!s) return;
+  const oldId = s.mediaId;
   s.mediaId = meta.id; s.trim = 0;
+  // A clip cut from a link that nothing uses any more is just clutter: remove it.
+  const om = oldId && oldId !== meta.id && S.media[oldId];
+  if (om && om.source && !S.projects.some(q => q.scenes.some(x => x.mediaId === oldId))) { delete S.media[oldId]; API.del(`/api/media/${oldId}`).catch(() => {}); }
   if (meta.duration > 0.3) s.dur = Math.max(1, Math.min(MAX_CLIP, Math.round(meta.duration * 10) / 10));
   touch(p);
   if (S.cur === p && S.view === "edit") {
@@ -1781,8 +1805,12 @@ function pollJobs() {
       try {
         const r = await API.get(`/api/jobs/${j.job}`);
         Object.assign(j, { state: r.state, progress: r.progress, error: r.error });
-        if (r.state === "done" && r.media) { applyJob(j.pid, sid, r.media); toast(`${j.tag} downloaded`); }
+        if (r.state === "done" && r.media) { applyJob(j.pid, sid, r.media); if (!j.auto) toast(`${j.tag} downloaded`); }
         else if (r.state === "error") toast(`${j.tag}: ${r.error}`);
+        if ((r.state === "done" || r.state === "error") && j.again) {
+          j.again = false; const p = S.projects.find(x => x.id === j.pid), sc = p && p.scenes.find(x => x.id === sid);
+          if (sc) setTimeout(() => autoCut(p, sc), 0);
+        }
       } catch (e) { if (e.code === 404) Object.assign(j, { state: "error", error: "Clipdeck restarted before this finished. Fetch it again." }); }
       updateJobUI(sid);
     }
@@ -1826,7 +1854,11 @@ function renderLinks(B) {
     S.sel = i; S.t = sceneStart(i) + 0.01; markSel(); renderInspector(); still();
     B.querySelectorAll(".link-row").forEach((x, k) => x.classList.toggle("sel", k === i));
   }));
-  B.querySelectorAll('[data-f="from"],[data-f="to"]').forEach(inp => inp.addEventListener("change", () => { if (sc[+inp.dataset.i] === S.cur.scenes[S.sel]) renderSrcView(true); }));
+  B.querySelectorAll('[data-f="from"],[data-f="to"]').forEach(inp => inp.addEventListener("change", () => {
+    const sc1 = sc[+inp.dataset.i]; if (sc1 === S.cur.scenes[S.sel]) renderSrcView(true);
+    const a = parseT(sc1.src.from), b = parseT(sc1.src.to), st = S.src[cleanUrl(sc1.src.url)];
+    if (st && st.source && sc1.mediaId && a != null && b != null && !isNaN(a) && !isNaN(b) && b > a && b - a <= MAX_CLIP) { sc1.dur = Math.round((b - a) * 10) / 10; renderTimeline(); updateClock(); autoCut(S.cur, sc1); }
+  }));
   checkSources(sc.map(s => cleanUrl(s.src.url)));
   B.querySelector("#fetch-all").onclick = async () => {
     const todo = sc.filter(s => cleanUrl(s.src.url) && !ACTIVE.includes((S.jobs[s.id] || {}).state) && (!s.mediaId || ((S.media[s.mediaId] || {}).source || {}).url !== cleanUrl(s.src.url)));
