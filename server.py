@@ -239,6 +239,7 @@ def status():
         "impersonate": _has_curl_cffi(),
         "ffmpeg": ff,
         "exportDir": str(export_dir()),
+        "sourcesBytes": sources_size(),
         "dataDir": str(DATA),
         "configPath": str(CONFIG_FILE),
         "browser": cfg.get("browser", ""),
@@ -450,72 +451,191 @@ def parse_t(v) -> float | None:
         return None
 
 
-def run_fetch(job_id: str, req: dict) -> None:
-    """Runs in a worker thread: download one clip with yt-dlp and register it."""
-    job = JOBS[job_id]
-    with DL_SLOTS:
-        if job.get("cancelled"):
-            job.update(state="error", error="Cancelled", finished=time.time())
-            return
-        job["state"] = "downloading"
-        tmpdir = Path(tempfile.mkdtemp(prefix="clipdeck-dl-"))
-        a, b = parse_t(req.get("from")), parse_t(req.get("to"))
-        a0 = a if a is not None and a >= 0 else 0.0
-        b0 = b if b is not None and b > a0 else a0 + MAX_CLIP
-        b0 = min(b0, a0 + MAX_CLIP)
-        cmd = [
-            sys.executable, "-m", "yt_dlp",
-            "--no-playlist", "--newline", "--progress", "--no-warnings", "--no-colors",
-            "-f", "bv*[height<=1080]+ba/b[height<=1080]/b",
-            "--merge-output-format", "mp4",
-            "--download-sections", f"*{a0:.2f}-{b0:.2f}", "--force-keyframes-at-cuts",
-            "--print", "after_move:CDTITLE %(title)s",
-            "--print", "after_move:CDFILE %(filepath)s",
-            "-o", str(tmpdir / "clip.%(ext)s"),
-        ]
-        if FFMPEG:
-            cmd += ["--ffmpeg-location", str(Path(FFMPEG).parent)]
-        browser = req.get("browser") or load_config().get("browser", "")
-        if browser in BROWSERS:
-            cmd += ["--cookies-from-browser", browser]
-        cmd.append(req["url"])
-        title, filepath, tail = "", "", []
-        try:
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=CHILD_ENV, **NOWIN)
-            job["proc"] = proc
-            assert proc.stdout
-            for line in io.TextIOWrapper(proc.stdout, encoding="utf-8", errors="replace"):
-                line = line.rstrip()
-                if line.startswith("CDTITLE "):
-                    title = line[8:]
-                elif line.startswith("CDFILE "):
-                    filepath = line[7:]
-                elif (mm := PCT_RE.search(line)):
-                    job["progress"] = float(mm.group(1))
-                elif "frame=" in line or "time=" in line:
-                    job["state"] = "cutting"
-                if line.strip():
-                    tail = (tail + [line])[-12:]
-            rc = proc.wait()
+def ytdlp_download(job: dict, url: str, browser: str, tmpdir: Path, section: tuple[float, float] | None = None) -> tuple[Path, str]:
+    """Download a link with yt-dlp into tmpdir, updating job progress. Returns (file, title)."""
+    cmd = [
+        sys.executable, "-m", "yt_dlp",
+        "--no-playlist", "--newline", "--progress", "--no-warnings", "--no-colors",
+        "-f", "bv*[height<=1080]+ba/b[height<=1080]/b",
+        "--merge-output-format", "mp4",
+        "--print", "after_move:CDTITLE %(title)s",
+        "--print", "after_move:CDFILE %(filepath)s",
+        "-o", str(tmpdir / "clip.%(ext)s"),
+    ]
+    if section:
+        cmd += ["--download-sections", f"*{section[0]:.2f}-{section[1]:.2f}", "--force-keyframes-at-cuts"]
+    if FFMPEG:
+        cmd += ["--ffmpeg-location", str(Path(FFMPEG).parent)]
+    browser = browser or load_config().get("browser", "")
+    if browser in BROWSERS:
+        cmd += ["--cookies-from-browser", browser]
+    cmd.append(url)
+    title, filepath, tail, part = "", "", [], 0
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=CHILD_ENV, **NOWIN)
+    job["proc"] = proc
+    try:
+        assert proc.stdout
+        for line in io.TextIOWrapper(proc.stdout, encoding="utf-8", errors="replace"):
+            line = line.rstrip()
+            if line.startswith("CDTITLE "):
+                title = line[8:]
+            elif line.startswith("CDFILE "):
+                filepath = line[7:]
+            elif "[download] Destination:" in line:
+                part += 1
+                job["part"] = part
+            elif (mm := PCT_RE.search(line)):
+                job["progress"] = float(mm.group(1))
+            elif "[Merger]" in line or "frame=" in line or "time=" in line:
+                job["state"] = "cutting" if section else "merging"
+            if line.strip():
+                tail = (tail + [line])[-12:]
+        rc = proc.wait()
+    finally:
+        job.pop("proc", None)
+    if job.get("cancelled"):
+        raise RuntimeError("Cancelled")
+    files = [Path(filepath)] if filepath and Path(filepath).exists() else sorted(
+        p for p in tmpdir.iterdir() if p.is_file() and not p.name.endswith((".part", ".ytdl"))
+    )
+    if rc != 0 or not files:
+        raise RuntimeError(friendly_error("\n".join(tail)))
+    return files[0], title
+
+
+# ----- full videos: downloaded once per link so you can watch the whole thing and re-cut instantly
+SOURCES = DATA / "sources"
+SOURCES.mkdir(parents=True, exist_ok=True)
+SOURCE_KEEP_DAYS = 14
+SOURCE_CAP = 6 * 1024 ** 3  # keep at most ~6 GB of full videos; oldest go first
+SRC_JOBS: dict[str, str] = {}  # source key -> job id while downloading
+KEY_RE = re.compile(r"^[0-9a-f]{16}$")
+
+
+def source_key(url: str) -> str:
+    return hashlib.sha1(url.strip().encode("utf-8")).hexdigest()[:16]
+
+
+def source_info(url: str) -> dict | None:
+    """The cached full video for a link, if there is one."""
+    key = source_key(url)
+    try:
+        info = json.loads((SOURCES / f"{key}.json").read_text(encoding="utf-8"))
+        f = SOURCES / info["file"]
+        if not f.exists():
+            return None
+        now = time.time()
+        os.utime(f, (now, now))  # recently used: keep it longer
+        return {**info, "src": f"/source/{key}"}
+    except Exception:
+        return None
+
+
+def sources_size() -> int:
+    return sum(f.stat().st_size for f in SOURCES.iterdir() if f.is_file())
+
+
+def prune_sources() -> None:
+    try:
+        vids = sorted((f for f in SOURCES.iterdir() if f.is_file() and f.suffix != ".json"), key=lambda f: f.stat().st_mtime)
+        total = sum(f.stat().st_size for f in vids)
+        for f in vids:
+            old = time.time() - f.stat().st_mtime > SOURCE_KEEP_DAYS * 86400
+            if not old and total <= SOURCE_CAP:
+                continue
+            if f.stem in SRC_JOBS:
+                continue
+            total -= f.stat().st_size
+            f.unlink(missing_ok=True)
+            (SOURCES / f"{f.stem}.json").unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
+def run_source(job_id: str, req: dict) -> None:
+    """Runs in a worker thread: download the whole video for a link and keep it."""
+    job, url, key = JOBS[job_id], req["url"], source_key(req["url"])
+    try:
+        with DL_SLOTS:
             if job.get("cancelled"):
                 raise RuntimeError("Cancelled")
-            files = [Path(filepath)] if filepath and Path(filepath).exists() else sorted(
-                p for p in tmpdir.iterdir() if p.is_file() and not p.name.endswith((".part", ".ytdl"))
-            )
-            if rc != 0 or not files:
-                raise RuntimeError(friendly_error("\n".join(tail)))
-            job["state"] = "saving"
-            label = req.get("label") or "clip"
-            name = f"{label} · {title}"[:120] if title else f"{label}{files[0].suffix}"
-            meta = register_media(files[0], req["projectId"], name, "video",
-                                  {"source": {"url": req["url"], "from": a0, "to": b0, "title": title}})
-            job.update(state="done", progress=100, media=meta)
-        except Exception as e:  # noqa: BLE001 - reported to the editor
-            job.update(state="error", error=str(e) or "Download failed")
-        finally:
-            job.pop("proc", None)
-            shutil.rmtree(tmpdir, ignore_errors=True)
-            job["finished"] = time.time()
+            job["state"] = "downloading"
+            tmpdir = Path(tempfile.mkdtemp(prefix="clipdeck-src-"))
+            try:
+                f, title = ytdlp_download(job, url, req.get("browser", ""), tmpdir)
+                job["state"] = "saving"
+                dest = SOURCES / f"{key}{f.suffix.lower() or '.mp4'}"
+                shutil.move(str(f), dest)
+                info = {"key": key, "url": url, "title": title, "file": dest.name,
+                        "duration": probe_duration(dest), "size": dest.stat().st_size, "added": int(time.time() * 1000)}
+                write_json(SOURCES / f"{key}.json", info)
+            finally:
+                shutil.rmtree(tmpdir, ignore_errors=True)
+        job.update(state="done", progress=100, source=source_info(url))
+    except Exception as e:  # noqa: BLE001 - reported to the editor
+        job.update(state="error", error=str(e) or "Download failed")
+    finally:
+        SRC_JOBS.pop(key, None)
+        job["finished"] = time.time()
+        prune_sources()
+
+
+def cut_from_source(job: dict, info: dict, a: float, b: float, out: Path) -> None:
+    """Cut [a, b] out of a full video with an exact, frame-accurate re-encode."""
+    if not FFMPEG:
+        raise RuntimeError("ffmpeg is missing. Reinstall Clipdeck to restore it.")
+    job["state"] = "cutting"
+    cmd = [FFMPEG, "-hide_banner", "-loglevel", "error", "-y", "-ss", f"{a:.3f}", "-i", str(SOURCES / info["file"]),
+           "-t", f"{b - a:.3f}", "-map", "0:v:0", "-map", "0:a:0?",
+           "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p",
+           "-c:a", "aac", "-b:a", "192k", "-ac", "2", "-movflags", "+faststart", str(out)]
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=CHILD_ENV, **NOWIN)
+    job["proc"] = proc
+    try:
+        _, err = proc.communicate()
+    finally:
+        job.pop("proc", None)
+    if job.get("cancelled"):
+        raise RuntimeError("Cancelled")
+    if proc.returncode != 0 or not out.exists() or out.stat().st_size < 1000:
+        raise RuntimeError("Couldn't cut this video: " + (err.decode("utf-8", "replace").strip().splitlines() or ["unknown error"])[-1][:200])
+
+
+def run_fetch(job_id: str, req: dict) -> None:
+    """Runs in a worker thread: get one clip (cut from the kept full video when there is one) and register it."""
+    job = JOBS[job_id]
+    a, b = parse_t(req.get("from")), parse_t(req.get("to"))
+    a0 = a if a is not None and a >= 0 else 0.0
+    b0 = b if b is not None and b > a0 else a0 + MAX_CLIP
+    b0 = min(b0, a0 + MAX_CLIP)
+    tmpdir = Path(tempfile.mkdtemp(prefix="clipdeck-dl-"))
+    try:
+        info = source_info(req["url"])
+        if info and info.get("duration"):
+            D = float(info["duration"])
+            if a0 >= D - 0.2:
+                raise RuntimeError(f"The start time is past the end of the video ({int(D // 60)}:{D % 60:04.1f}).")
+            b0 = min(b0, D)
+            f, title = tmpdir / "clip.mp4", info.get("title", "")
+            cut_from_source(job, info, a0, b0, f)
+        else:
+            with DL_SLOTS:
+                if job.get("cancelled"):
+                    raise RuntimeError("Cancelled")
+                job["state"] = "downloading"
+                f, title = ytdlp_download(job, req["url"], req.get("browser", ""), tmpdir, (a0, b0))
+        job["state"] = "saving"
+        label = req.get("label") or "clip"
+        name = f"{label} · {title}"[:120] if title else f"{label}{f.suffix}"
+        meta = register_media(f, req["projectId"], name, "video",
+                              {"source": {"url": req["url"], "from": a0, "to": b0, "title": title}})
+        job.update(state="done", progress=100, media=meta)
+    except Exception as e:  # noqa: BLE001 - reported to the editor
+        job.update(state="error", error=str(e) or "Download failed")
+    finally:
+        job.pop("proc", None)
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        job["finished"] = time.time()
 
 
 def friendly_error(log: str) -> str:
@@ -557,12 +677,61 @@ async def fetch_clip(request: Request):
         raise HTTPException(400, "That isn't a web link.")
     check_id(req.get("projectId", ""))
     req["url"] = url
-    job_id = uuid.uuid4().hex[:10]
-    JOBS[job_id] = {"id": job_id, "state": "queued", "progress": 0, "sceneId": req.get("sceneId"), "started": time.time()}
+    job_id = _new_job(sceneId=req.get("sceneId"))
     threading.Thread(target=run_fetch, args=(job_id, req), daemon=True).start()
+    return {"job": job_id}
+
+
+def _new_job(**extra) -> str:
+    job_id = uuid.uuid4().hex[:10]
+    JOBS[job_id] = {"id": job_id, "state": "queued", "progress": 0, "started": time.time(), **extra}
     for k in [k for k, j in JOBS.items() if j.get("finished") and time.time() - j["finished"] > 3600]:
         JOBS.pop(k, None)
+    return job_id
+
+
+@app.post("/api/source")
+async def get_source(request: Request):
+    """Full video for a link: returns it if it's kept already, otherwise starts downloading it."""
+    req = await request.json()
+    url = str(req.get("url", "")).strip()
+    if not re.match(r"^https?://\S+$", url):
+        raise HTTPException(400, "That isn't a web link.")
+    info = source_info(url)
+    if info:
+        return {"source": info}
+    if req.get("check"):
+        return {"source": None, "job": SRC_JOBS.get(source_key(url))}
+    key = source_key(url)
+    running = SRC_JOBS.get(key)
+    if running and JOBS.get(running, {}).get("state") not in ("done", "error", None):
+        return {"job": running}
+    job_id = _new_job(kind="source", url=url)
+    SRC_JOBS[key] = job_id
+    threading.Thread(target=run_source, args=(job_id, {"url": url, "browser": req.get("browser", "")}), daemon=True).start()
     return {"job": job_id}
+
+
+@app.get("/source/{key}")
+def serve_source(key: str, request: Request):
+    if not KEY_RE.match(key):
+        raise HTTPException(400, "Bad id")
+    try:
+        info = json.loads((SOURCES / f"{key}.json").read_text(encoding="utf-8"))
+    except Exception:
+        raise HTTPException(404, "Full video not found")
+    f = SOURCES / info["file"]
+    if not f.exists():
+        raise HTTPException(404, "Full video not found")
+    return serve_with_ranges(f, request)
+
+
+@app.delete("/api/sources")
+def clear_sources():
+    for f in SOURCES.iterdir():
+        if f.is_file() and f.stem not in SRC_JOBS:
+            f.unlink(missing_ok=True)
+    return {"ok": True, "bytes": sources_size()}
 
 
 @app.get("/api/jobs/{job_id}")
@@ -1102,7 +1271,7 @@ def _digest(paths) -> str:
 
 
 def _busy() -> bool:
-    return bool(EXPORTS) or any(j.get("state") in ("queued", "downloading", "cutting", "saving") for j in JOBS.values())
+    return bool(EXPORTS) or any(j.get("state") in ("queued", "downloading", "merging", "cutting", "saving") for j in JOBS.values())
 
 
 def restart_self() -> None:
@@ -1284,6 +1453,7 @@ def main() -> None:
         return
     threading.Thread(target=watch_for_updates, daemon=True).start()
     threading.Thread(target=online_update_loop, daemon=True).start()
+    threading.Thread(target=prune_sources, daemon=True).start()
     if open_browser:
         threading.Timer(1.5, lambda: webbrowser.open(url)).start()
     print(f"Clipdeck running at {url}  (data: {DATA})", flush=True)

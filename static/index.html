@@ -165,6 +165,8 @@ input[type=checkbox]{accent-color:var(--accent)}
 .hdl::after{content:"";width:2px;height:14px;background:#111;border-radius:1px}
 .hdl.l{left:-10px}.hdl.r{right:-10px}
 .cph{position:absolute;top:-7px;bottom:-7px;width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 3px #000;pointer-events:none}
+.cut-zoom{gap:6px}.cut-zoom [aria-pressed="true"]{border-color:var(--hot);color:var(--hot)}
+.cut-stage video::-webkit-media-controls-fullscreen-button{display:none}
 .cut-ticks{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:10px;color:var(--faint);margin:0 9px}
 .cut-row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}
 .cut-len{display:grid;justify-items:end}
@@ -317,7 +319,7 @@ const API = {
 const W = 720, H = 1280;
 const BGS = ["#1d3fbf", "#c2185b", "#0f8a6a", "#e65100", "#5e35b1", "#263238", "#b71c1c", "#00838f"];
 const uid = () => Math.random().toString(36).slice(2, 10);
-const S = { status: {}, jobs: {}, projects: [], media: {}, cur: null, view: "dash", t: 0, playing: false, exporting: false, sel: 0, tab: "media", guides: false };
+const S = { status: {}, jobs: {}, src: {}, projects: [], media: {}, cur: null, view: "dash", t: 0, playing: false, exporting: false, sel: 0, tab: "media", guides: false };
 const els = {};
 const MAX_CLIP = 20; // seconds per clip
 const mk = (kind, text, dur, bg, label = "") => ({ id: uid(), kind, mediaId: null, trim: 0, dur, text, label, bg, zoom: 1, panX: 0, panY: 0, motion: true, src: { url: "", from: "", to: "" } });
@@ -1209,6 +1211,7 @@ async function renderSettings() {
       ${st.ffmpeg ? "" : `<p class="hint">${st.platform === "windows" ? "Run the Clipdeck setup file again to restore it." : 'Install it in a terminal with <code>sudo apt install ffmpeg</code>, then restart Clipdeck.'}</p>`}
       <div class="field"><label for="exd">Save exported videos to</label><div class="copyrow"><input type="text" id="exd" value="${esc(st.exportDir || "")}"><button class="btn sm" id="exd-save">Save</button><button class="btn sm" id="exd-open">Open</button></div></div>
       <p class="hint">Projects and clips live in <code>${esc(shortPath(st.dataDir))}</code>. Back up that folder to keep your work.</p>
+      <div class="row"><span class="hint" id="src-size">Full videos kept for re-cutting: ${((st.sourcesBytes || 0) / 1e9).toFixed(2)} GB. Clipdeck keeps up to 6 GB and drops ones unused for 2 weeks.</span><button class="btn sm" id="src-clear" ${st.sourcesBytes ? "" : "disabled"}>Clear</button></div>
     </section>
     <section class="set-card"><div class="set-h"><h2>Claude for writing</h2><span class="pill ${st.ai ? "ok" : "bad"}">${st.ai ? "Connected" : "Not set up"}</span></div>
       <p class="hint">Ranking scripts, topic ideas and titles use the Anthropic API with your own key, billed by Anthropic per use. A ranking script costs roughly one US cent. Create a key in the Claude Console at platform.claude.com.</p>
@@ -1223,7 +1226,7 @@ async function renderSettings() {
     <section class="set-card"><div class="set-h"><h2>Updates</h2><span class="pill ${S.upd && S.upd.error ? "bad" : "ok"}">${S.upd && S.upd.current && S.upd.current.version ? "Version " + esc(S.upd.current.version) : "Version unknown"}</span></div>
       <p class="hint">Clipdeck checks GitHub (${esc(S.upd ? S.upd.repo : "")}) for new versions when it starts and every 6 hours, installs them, and reloads by itself. It never restarts during a download or export.</p>
       <label class="row"><input type="checkbox" id="upd-auto" ${!S.upd || S.upd.auto ? "checked" : ""}> Install updates automatically</label>
-      <div class="row"><button class="btn" id="upd-check">Check for updates now</button><span class="status ${S.upd && S.upd.error ? "err" : ""}" id="upd-st" aria-live="polite">${S.upd ? esc(S.upd.error || S.upd.status) + (S.upd.checked ? " · checked " + new Date(S.upd.checked).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "") : ""}</span></div>
+      <div class="row"><button class="btn" id="upd-check">Check for updates now</button><span class="status ${S.upd && S.upd.error ? "err" : ""}" id="app-upd-st" aria-live="polite">${S.upd ? esc(S.upd.error || S.upd.status) + (S.upd.checked ? " · checked " + new Date(S.upd.checked).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "") : ""}</span></div>
       ${S.upd && S.upd.latest && S.upd.latest.notes ? `<p class="hint">Latest: ${esc(S.upd.latest.notes)}</p>` : ""}
     </section>
     <section class="set-card"><div class="set-h"><h2>Quit Clipdeck</h2></div>
@@ -1239,6 +1242,7 @@ async function renderSettings() {
   };
   q("#dbr").onchange = e => saveSet({ browser: e.target.value }, "Default sign-in saved");
   q("#exd-save").onclick = () => saveSet({ exportDir: q("#exd").value }, "Export folder saved");
+  q("#src-clear").onclick = async e => { try { await API.del("/api/sources"); S.src = {}; S.status.sourcesBytes = 0; e.target.disabled = true; q("#src-size").textContent = "Full videos kept for re-cutting: 0.00 GB. Your ranks keep their clips."; toast("Full videos cleared"); } catch (err) { toast(err.message); } };
   q("#exd-open").onclick = () => API.post("/api/open-folder", { path: q("#exd").value }).catch(e => toast(e.message));
   const ks = q("#key-save"); if (ks) ks.onclick = () => { const v = q("#key").value.trim(); if (!v) return toast("Paste your API key first."); saveSet({ apiKey: v }, "API key saved"); };
   const kr = q("#key-rm"); if (kr) kr.onclick = () => saveSet({ apiKey: "" }, "API key removed");
@@ -1254,7 +1258,7 @@ async function renderSettings() {
   });
   q("#upd-auto").onchange = async e => { try { S.upd = await API.post("/api/updates/check", { auto: e.target.checked, check: false }); toast(e.target.checked ? "Automatic updates on" : "Automatic updates off"); } catch (err) { toast(err.message); } };
   q("#upd-check").onclick = async e => {
-    const b = e.currentTarget, st = q("#upd-st"); b.disabled = true; st.className = "status"; st.textContent = "Checking…";
+    const b = e.currentTarget, st = q("#app-upd-st"); b.disabled = true; st.className = "status"; st.textContent = "Checking…";
     try { S.upd = await API.post("/api/updates/check", { install: true }); st.className = "status" + (S.upd.error ? " err" : ""); st.textContent = S.upd.error || S.upd.status; }
     catch (err) { st.className = "status err"; st.textContent = err.message; }
     b.disabled = false;
@@ -1472,33 +1476,58 @@ function onVideoSet(si) {
 function openCutter(si) {
   const p = S.cur, s = p.scenes[si], m = s && S.media[s.mediaId];
   if (!m || m.type !== "video") return;
-  if (S.playing) pause();
   const D = m.duration || mediaEl(m.id).el.duration || 0;
   if (!D || !isFinite(D)) return toast("This clip's length couldn't be read. Try re-adding the file.");
-  const url = mediaEl(m.id).url, clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
-  const MIN = Math.min(0.5, D);
-  let a = clamp(s.trim, 0, Math.max(0, D - MIN)), len = clamp(s.dur, MIN, Math.min(MAX_CLIP, D - a));
-  const tag = s.kind === "item" ? "#" + rankOf(p, s) : s.kind;
-  const box = modal(`<div class="cut-head"><h2>Cut clip · ${esc(tag)}</h2><span class="card-meta">${esc(m.name)} · ${fmt(D)}</span></div>
-    <div class="cut-stage"><video id="cv" playsinline preload="auto"></video></div>
+  cutterUI({
+    title: "Cut clip · " + sceneTag(p, s), sub: `${m.name} · ${fmt(D)}`, url: mediaEl(m.id).url, D, a: s.trim, len: s.dur,
+    extra: cleanUrl(s.src.url) ? `<button class="btn sm ghost" id="c-full">${I.play}Watch the full video instead</button>` : "",
+    bind: q => { const b = q("#c-full"); if (b) b.onclick = () => { closeModal(); openFullCutter(s.id); }; },
+    onOk: (a, len) => {
+      s.trim = +a.toFixed(2); s.dur = Math.min(MAX_CLIP, Math.max(0.5, Math.round(len * 10) / 10));
+      touch(); closeModal(); S.sel = p.scenes.indexOf(s); S.t = sceneStart(S.sel) + 0.01; renderInspector(); renderTimeline(); still();
+      toast(`Cut set: ${fmt(s.trim)} → ${fmt(s.trim + s.dur)}`);
+    },
+  });
+}
+// The cut editor: a video, a filmstrip bar with a yellow box (MAX_CLIP s at most), typed times and a zoom for long videos.
+function cutterUI(o) {
+  if (S.playing) pause();
+  const D = o.D, url = o.url, clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+  const MIN = Math.min(0.5, D), long = D > 90;
+  let a = clamp(o.a || 0, 0, Math.max(0, D - MIN)), len = clamp(o.len || MAX_CLIP, MIN, Math.min(MAX_CLIP, D - a));
+  let vs = 0, ve = D; // the part of the video the bar shows
+  const box = modal(`<div class="cut-head"><h2>${esc(o.title)}</h2><span class="card-meta">${esc(o.sub || "")}</span></div>
+    ${o.note ? `<p class="hint">${o.note}</p>` : ""}
+    <div class="cut-stage"><video id="cv" playsinline preload="auto" controls></video></div>
+    ${long ? `<div class="row cut-zoom" role="group" aria-label="Bar shows"><button class="btn sm" data-z="all" aria-pressed="true">Whole video</button><button class="btn sm" data-z="cut" aria-pressed="false">Zoom to the cut</button><span class="card-meta" id="c-view"></span></div>` : ""}
     <div class="cut-bar" id="cbar"><div class="strip" id="strip"></div>
       <div class="win" id="win"><span class="hdl l" id="hl" tabindex="0" role="slider" aria-label="Start of cut"></span><span class="hdl r" id="hr" tabindex="0" role="slider" aria-label="End of cut"></span></div>
       <div class="cph" id="cph"></div></div>
-    <div class="cut-ticks"><span>0:00</span><span>${fmt(D / 2)}</span><span>${fmt(D)}</span></div>
-    <p class="hint">Drag the yellow box to move the cut, or its edges to resize it. Click anywhere else on the bar to look at that moment.</p>
+    <div class="cut-ticks"><span id="tk0"></span><span id="tk1"></span><span id="tk2"></span></div>
+    <p class="hint">Play the video to watch all of it. Drag the yellow box to move the cut, or its edges to resize it. Click anywhere else on the bar to jump there.</p>
     <div class="cut-row">
       <div class="field"><label for="c-a">Start</label><input type="text" id="c-a" inputmode="decimal"></div>
       <div class="field"><label for="c-b">End</label><input type="text" id="c-b" inputmode="decimal"></div>
       <div class="cut-len"><b id="c-len"></b><span>of ${MAX_CLIP} s max</span></div></div>
-    <div class="row"><button class="btn" id="c-play">${I.play}Play cut</button><button class="btn sm ghost" id="c-sa">Start here</button><button class="btn sm ghost" id="c-sb">End here</button></div>
-    <div class="row" style="justify-content:flex-end"><button class="btn" id="c-cancel">Cancel</button><button class="btn primary" id="c-ok">Use this cut</button></div>`);
+    <div class="row"><button class="btn" id="c-play">${I.play}Play cut</button><button class="btn sm ghost" id="c-sa">Start here</button><button class="btn sm ghost" id="c-sb">End here</button>${o.extra || ""}</div>
+    <div class="row" style="justify-content:flex-end"><button class="btn" id="c-cancel">Cancel</button><button class="btn primary" id="c-ok">${esc(o.okLabel || "Use this cut")}</button></div>`);
   box.querySelector(".modal-box").classList.add("wide");
   const q = id => box.querySelector(id), v = q("#cv"), bar = q("#cbar"), win = q("#win"), hl = q("#hl"), hr = q("#hr"), cph = q("#cph");
   const ia = q("#c-a"), ib = q("#c-b"), lenEl = q("#c-len"), playBtn = q("#c-play");
-  let alive = true, looping = false, raf2 = 0;
+  let alive = true, looping = false, raf2 = 0, stripGen = 0, zoomed = false;
   v.src = url; v.currentTime = a;
+  const pct = t => ((t - vs) / (ve - vs) * 100) + "%";
+  function setView(z) {
+    zoomed = z;
+    if (z) { const span = Math.min(D, 60), mid = a + len / 2; vs = clamp(mid - span / 2, 0, D - span); ve = vs + span; } else { vs = 0; ve = D; }
+    box.querySelectorAll("[data-z]").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.z === "cut") === z)));
+    const cv = q("#c-view"); if (cv) cv.textContent = z ? `Showing ${fmt(vs)} – ${fmt(ve)}` : "";
+    q("#tk0").textContent = fmt(vs); q("#tk1").textContent = fmt((vs + ve) / 2); q("#tk2").textContent = fmt(ve);
+    filmstrip();
+  }
   function update() {
-    win.style.left = (a / D * 100) + "%"; win.style.width = (len / D * 100) + "%";
+    if (zoomed && (a < vs || a + len > ve)) setView(true); // keep the cut in sight
+    win.style.left = pct(a); win.style.width = (len / (ve - vs) * 100) + "%";
     if (document.activeElement !== ia) ia.value = fmt(a);
     if (document.activeElement !== ib) ib.value = fmt(a + len);
     lenEl.textContent = len.toFixed(1) + " s"; lenEl.classList.toggle("max", len >= MAX_CLIP - 0.05);
@@ -1508,10 +1537,16 @@ function openCutter(si) {
   const setEnd = ne => { ne = clamp(ne, MIN, D); if (ne - a > MAX_CLIP) a = ne - MAX_CLIP; if (ne - a < MIN) a = Math.max(0, ne - MIN); len = ne - a; };
   const seekTo = t => { try { v.currentTime = clamp(t, 0, D - 0.01); } catch (e) {} };
   const stopLoop = () => { looping = false; v.pause(); playBtn.innerHTML = I.play + "Play cut"; };
-  const tick = () => { if (!alive) return; cph.style.left = (v.currentTime / D * 100) + "%"; if (looping && (v.currentTime >= a + len || v.currentTime < a - 0.3)) seekTo(a); raf2 = requestAnimationFrame(tick); };
+  v.addEventListener("pause", () => { if (looping) { looping = false; playBtn.innerHTML = I.play + "Play cut"; } });
+  const tick = () => {
+    if (!alive) return; const t = v.currentTime;
+    cph.style.display = t < vs || t > ve ? "none" : ""; cph.style.left = pct(t);
+    if (looping && (t >= a + len || t < a - 0.3)) seekTo(a);
+    raf2 = requestAnimationFrame(tick);
+  };
   raf2 = requestAnimationFrame(tick);
   let drag = null;
-  const timeAt = e => { const r = bar.getBoundingClientRect(); return clamp((e.clientX - r.left) / r.width, 0, 1) * D; };
+  const timeAt = e => { const r = bar.getBoundingClientRect(); return vs + clamp((e.clientX - r.left) / r.width, 0, 1) * (ve - vs); };
   bar.onpointerdown = e => {
     const t = timeAt(e);
     if (e.target === hl) drag = { k: "l" }; else if (e.target === hr) drag = { k: "r" }; else if (win.contains(e.target)) drag = { k: "m", off: t - a }; else { drag = { k: "s" }; if (looping) stopLoop(); seekTo(t); }
@@ -1522,7 +1557,7 @@ function openCutter(si) {
     if (!drag) return; const t = timeAt(e);
     if (drag.k === "l") { setStart(t, true); seekTo(a); }
     else if (drag.k === "r") { setEnd(t); seekTo(a + len - 0.05); }
-    else if (drag.k === "m") { a = clamp(t - drag.off, 0, D - len); seekTo(a); }
+    else if (drag.k === "m") { a = clamp(t - drag.off, Math.max(0, vs), Math.min(D, ve) - len); seekTo(a); }
     else seekTo(t);
     update();
   };
@@ -1537,38 +1572,134 @@ function openCutter(si) {
   q("#c-sa").onclick = () => { setStart(v.currentTime, false); update(); };
   q("#c-sb").onclick = () => { const t = v.currentTime; if (t < MIN) return toast("Move a little later in the video before setting the end."); setEnd(t); update(); };
   playBtn.onclick = () => { if (looping) return stopLoop(); looping = true; seekTo(a); v.play().catch(() => {}); playBtn.innerHTML = I.pause + "Pause"; };
+  box.querySelectorAll("[data-z]").forEach(b => b.onclick = () => { setView(b.dataset.z === "cut"); update(); });
   q("#c-cancel").onclick = closeModal;
-  q("#c-ok").onclick = () => {
-    s.trim = +a.toFixed(2); s.dur = Math.min(MAX_CLIP, Math.max(MIN, Math.round(len * 10) / 10));
-    touch(); closeModal(); S.sel = si; S.t = sceneStart(si) + 0.01; renderInspector(); renderTimeline(); still();
-    toast(`Cut set: ${fmt(s.trim)} → ${fmt(s.trim + s.dur)}`);
-  };
+  q("#c-ok").onclick = () => o.onOk(a, len);
   const onKey = e => { if (e.key === "Escape") closeModal(); };
   document.addEventListener("keydown", onKey);
-  box._cleanup = () => { alive = false; cancelAnimationFrame(raf2); v.pause(); v.removeAttribute("src"); v.load(); document.removeEventListener("keydown", onKey); };
-  update();
-  // Filmstrip: grab evenly spaced frames from a hidden copy of the video.
-  (async () => {
-    const strip = q("#strip"), N = 12, tv = document.createElement("video");
-    tv.muted = true; tv.preload = "auto"; tv.src = url;
+  box._cleanup = () => { alive = false; stripGen++; cancelAnimationFrame(raf2); v.pause(); v.removeAttribute("src"); v.load(); document.removeEventListener("keydown", onKey); };
+  if (o.bind) o.bind(q);
+  // Filmstrip: grab evenly spaced frames of the part the bar shows from a hidden copy of the video.
+  async function filmstrip() {
+    const gen = ++stripGen, strip = q("#strip"), N = 12, from = vs, span = ve - vs, tv = document.createElement("video");
+    strip.innerHTML = ""; tv.muted = true; tv.preload = "auto"; tv.src = url;
     await new Promise(r => { if (tv.readyState >= 1) r(); else { tv.addEventListener("loadedmetadata", r, { once: true }); setTimeout(r, 4000); } });
-    for (let i = 0; i < N && alive; i++) {
+    for (let i = 0; i < N && gen === stripGen; i++) {
       const cv = document.createElement("canvas"); cv.width = 96; cv.height = 60; strip.appendChild(cv);
-      await new Promise(r => { const to = setTimeout(r, 3000); tv.addEventListener("seeked", () => { clearTimeout(to); r(); }, { once: true }); tv.currentTime = (i + 0.5) / N * D; });
-      if (!alive || !tv.videoWidth) continue;
+      await new Promise(r => { const to = setTimeout(r, 3000); tv.addEventListener("seeked", () => { clearTimeout(to); r(); }, { once: true }); tv.currentTime = from + (i + 0.5) / N * span; });
+      if (gen !== stripGen || !tv.videoWidth) continue;
       const c = cv.getContext("2d"), sc = Math.max(96 / tv.videoWidth, 60 / tv.videoHeight), w = tv.videoWidth * sc, h = tv.videoHeight * sc;
       c.drawImage(tv, (96 - w) / 2, (60 - h) / 2, w, h);
     }
     tv.removeAttribute("src"); tv.load();
-  })();
+  }
+  setView(long && o.zoom !== false && (o.a || 0) > 0);
+  update();
+  return box;
 }
-const ACTIVE = ["queued", "downloading", "cutting", "saving"];
+// ---------- full videos: download a link's whole video once, watch it, and cut any part of it ----------
+const SRC_ACTIVE = ["queued", "downloading", "merging", "saving"];
+function srcState(u) { return u ? S.src[u] : null; }
+function srcLine(st) {
+  if (!st) return "";
+  if (st.state === "error") return `<span class="job err">${esc(st.error || "Download failed")}</span>`;
+  const what = st.part >= 2 ? "audio" : "video";
+  const lbl = { queued: "Waiting for a free download slot…", downloading: `Downloading the full ${what}${st.progress ? " " + Math.round(st.progress) + "%" : "…"}`, merging: "Joining video and audio…", saving: "Saving…" }[st.state] || "";
+  const w = st.state === "downloading" ? Math.max(4, st.progress || 0) : st.state === "queued" ? 0 : 100;
+  return `<span class="job">${lbl}</span><span class="jbar"><i style="width:${w}%"></i></span>`;
+}
+function fullBtnLabel(u) {
+  const st = srcState(u);
+  if (st && SRC_ACTIVE.includes(st.state)) return `Full video ${st.state === "downloading" && st.progress ? Math.round(st.progress) + "%" : "…"}`;
+  return st && st.source ? "Watch & cut" : "Watch full video";
+}
+function updateSrcUI(u) {
+  const p = S.cur; if (!p) return;
+  for (const s of p.scenes) {
+    if (cleanUrl(s.src.url) !== u) continue;
+    document.querySelectorAll(`[data-full-id="${s.id}"]`).forEach(b => { b.innerHTML = I.play + fullBtnLabel(u); });
+  }
+  const fv = document.getElementById("fv-job"); if (fv && fv.dataset.url === u) fv.innerHTML = srcLine(S.src[u]);
+}
+let srcPollT = 0;
+function pollSources() {
+  if (srcPollT) return;
+  srcPollT = setInterval(async () => {
+    const act = Object.entries(S.src).filter(([, st]) => st.job && SRC_ACTIVE.includes(st.state));
+    if (!act.length) { clearInterval(srcPollT); srcPollT = 0; return; }
+    for (const [u, st] of act) {
+      try {
+        const r = await API.get(`/api/jobs/${st.job}`);
+        Object.assign(st, { state: r.state, progress: r.progress, part: r.part, error: r.error });
+        if (r.state === "done" && r.source) { st.source = r.source; const go = st.onReady; st.onReady = null; if (go) go(); else toast("Full video ready: " + (r.source.title || "press Watch & cut")); }
+        else if (r.state === "error") { st.onReady = null; toast(r.error || "The full video didn't download"); }
+      } catch (e) { if (e.code === 404) Object.assign(st, { state: "error", error: "Clipdeck restarted before this finished. Try again." }); }
+      updateSrcUI(u);
+    }
+  }, 700);
+}
+async function checkSources(urls) {
+  const todo = [...new Set(urls.filter(u => u && !S.src[u]))];
+  for (const u of todo) {
+    S.src[u] = { state: "unknown" };
+    try {
+      const r = await API.post("/api/source", { url: u, check: true });
+      if (r.source) Object.assign(S.src[u], { state: "done", source: r.source });
+      else if (r.job) { Object.assign(S.src[u], { state: "queued", job: r.job }); pollSources(); }
+    } catch (e) { /* leave it unknown */ }
+    updateSrcUI(u);
+  }
+}
+async function openFullCutter(sid) {
+  const p = S.cur, s = p && p.scenes.find(x => x.id === sid); if (!s) return;
+  const u = cleanUrl(s.src.url); if (!u) return toast("Paste a link first.");
+  let st = S.src[u];
+  if (!(st && st.source)) {
+    if (!(st && SRC_ACTIVE.includes(st.state))) {
+      st = S.src[u] = { state: "queued", progress: 0 };
+      try {
+        const r = await API.post("/api/source", { url: u, browser: p.browser || "" });
+        if (r.source) Object.assign(st, { state: "done", source: r.source }); else { st.job = r.job; pollSources(); }
+      } catch (e) { Object.assign(st, { state: "error", error: e.message }); }
+      updateSrcUI(u);
+    }
+    if (!st.source) {
+      if (st.state === "error") return toast(st.error);
+      const box = modal(`<div class="cut-head"><h2>Full video · ${esc(sceneTag(p, s))}</h2><span class="card-meta">${esc((platformOf(u) || {}).n || "")}</span></div>
+        <p class="hint">Clipdeck downloads the whole video once, so you can watch all of it and pick any ${MAX_CLIP} seconds. After that, changing the cut takes a few seconds and doesn't download again.</p>
+        <div class="row fetchrow"><span class="jobwrap" id="fv-job" data-url="${esc(u)}">${srcLine(st)}</span></div>
+        <div class="row" style="justify-content:flex-end"><button class="btn" id="fv-bg">Keep going in the background</button><button class="btn danger" id="fv-stop">Stop download</button></div>`);
+      st.onReady = () => { if (box.isConnected) { closeModal(); openFullCutter(sid); } else toast(`Full video for ${sceneTag(p, s)} is ready. Press Watch & cut.`); };
+      box.querySelector("#fv-bg").onclick = closeModal;
+      box.querySelector("#fv-stop").onclick = async () => { st.onReady = null; if (st.job) await API.post(`/api/jobs/${st.job}/cancel`).catch(() => {}); closeModal(); };
+      return;
+    }
+  }
+  const src = st.source, D = src.duration || 0;
+  if (!D) return toast("This video's length couldn't be read.");
+  let a = parseT(s.src.from), b = parseT(s.src.to);
+  if (a == null || isNaN(a) || a >= D) a = 0;
+  let len = b != null && !isNaN(b) && b > a ? b - a : MAX_CLIP;
+  cutterUI({
+    title: "Full video · " + sceneTag(p, s), sub: `${src.title || u} · ${fmt(D)}`, url: src.src, D, a, len,
+    okLabel: `Cut this onto ${sceneTag(p, s)}`, zoom: !!s.src.from,
+    onOk: (na, nl) => {
+      na = Math.round(na * 10) / 10; nl = Math.min(MAX_CLIP, Math.max(0.5, Math.floor(nl * 10 + 1e-6) / 10));
+      if (na + nl > D) nl = Math.floor((D - na) * 10) / 10;
+      s.src.from = fmt(na); s.src.to = fmt(na + nl); touch(); closeModal();
+      if (S.tab === "links") renderLeft();
+      if (S.cur === p && p.scenes[S.sel] === s) renderInspector();
+      fetchScene(s, true).then(ok => ok && toast(`Cutting ${sceneTag(p, s)}: ${s.src.from} → ${s.src.to}`));
+    },
+  });
+}
+const ACTIVE = ["queued", "downloading", "merging", "cutting", "saving"];
 function sceneTag(p, s) { return s.kind === "item" ? "#" + rankOf(p, s) : s.kind.toUpperCase(); }
 function jobLine(sid) {
   const j = S.jobs[sid]; if (!j) return "";
   if (j.state === "error") return `<span class="job err">${esc(j.error || "Download failed")}</span>`;
   if (j.state === "done") return `<span class="job ok">Downloaded</span>`;
-  const lbl = { queued: "Waiting…", downloading: `Downloading${j.progress ? " " + Math.round(j.progress) + "%" : "…"}`, cutting: "Cutting…", saving: "Saving…" }[j.state] || "";
+  const lbl = { queued: "Waiting…", downloading: `Downloading${j.progress ? " " + Math.round(j.progress) + "%" : "…"}`, merging: "Joining video and audio…", cutting: "Cutting…", saving: "Saving…" }[j.state] || "";
   const w = j.state === "downloading" ? Math.max(4, j.progress || 0) : j.state === "queued" ? 0 : 100;
   return `<span class="job">${lbl}</span><span class="jbar"><i style="width:${w}%"></i></span>`;
 }
@@ -1624,7 +1755,7 @@ function pollJobs() {
 function renderLinks(B) {
   const p = S.cur, sc = p.scenes, br = ["firefox", "chrome", "chromium", "brave", "edge"];
   const def = S.status.browser ? S.status.browser[0].toUpperCase() + S.status.browser.slice(1) : "none";
-  B.innerHTML = `<p class="hint">Paste a TikTok, YouTube, Instagram or Facebook link for each rank and fetch it. The clip downloads straight onto its rank, cut to ${MAX_CLIP} seconds at most.</p>
+  B.innerHTML = `<p class="hint">Paste a TikTok, YouTube, Instagram or Facebook link for each rank. <b>Fetch</b> downloads just the part between From and To. <b>Watch full video</b> lets you see the whole thing first and drag the cut where you want it, and you can come back and change it any time.</p>
     <button class="btn primary" id="fetch-all">${I.out}Fetch all links</button>
     <details id="bulk-d"><summary>Paste many links at once</summary><div class="sect">
       <textarea id="bulk" placeholder="One link per line, in the order they play"></textarea>
@@ -1640,7 +1771,7 @@ function renderLinks(B) {
           <input type="text" id="from-${s.id}" data-i="${i}" data-f="from" value="${esc(s.src.from)}" placeholder="From 0:00" aria-label="Start time" class="${isNaN(a) || badRange ? "bad-input" : ""}">
           <input type="text" id="to-${s.id}" data-i="${i}" data-f="to" value="${esc(s.src.to)}" placeholder="To (end)" aria-label="End time" class="${isNaN(b) || badRange ? "bad-input" : ""}">
         </div>
-        <div class="row fetchrow"><button class="btn sm" data-fetch-id="${s.id}" ${busy ? "disabled" : ""}>${s.mediaId ? "Fetch again" : "Fetch"}</button><span class="jobwrap" id="job-${s.id}">${jobLine(s.id)}</span></div></div>`;
+        <div class="row fetchrow"><button class="btn sm" data-fetch-id="${s.id}" ${busy ? "disabled" : ""}>${s.mediaId ? "Fetch again" : "Fetch"}</button>${cleanUrl(s.src.url) ? `<button class="btn sm ghost" data-full-id="${s.id}">${I.play}${fullBtnLabel(cleanUrl(s.src.url))}</button>` : ""}<span class="jobwrap" id="job-${s.id}">${jobLine(s.id)}</span></div></div>`;
     }).join("")}</div>
     <p class="hint">No times set: the first ${MAX_CLIP} seconds. Only a start time: the ${MAX_CLIP} seconds after it.</p>
     <div class="field"><label for="ck">Sign-in for this ranking</label>
@@ -1651,8 +1782,11 @@ function renderLinks(B) {
     if (inp.dataset.f === "url") { const pl = platformOf(inp.value), row = inp.closest(".link-row"), h = row.querySelector(".link-h"); let tag = h.querySelector(".plat"); if (!pl) { tag && tag.remove(); } else { if (!tag) { tag = document.createElement("span"); tag.className = "plat"; h.appendChild(tag); } tag.dataset.p = pl.k; tag.textContent = pl.n; } inp.classList.toggle("bad-input", !!pl && pl.k === "bad"); }
     else { const a = parseT(s.src.from), b = parseT(s.src.to), bad = a != null && b != null && !isNaN(a) && !isNaN(b) && (b <= a || b - a > MAX_CLIP); const row = inp.closest(".link-row"); row.querySelector('[data-f="from"]').classList.toggle("bad-input", isNaN(a) || bad); row.querySelector('[data-f="to"]').classList.toggle("bad-input", isNaN(b) || bad); }
   });
+  B.querySelectorAll('[data-f="url"]').forEach(inp => inp.onchange = () => { if (S.tab === "links") renderLeft(); });
   B.querySelectorAll("[data-f]").forEach(inp => inp.onfocus = () => { const i = +inp.dataset.i; if (S.sel !== i) { S.sel = i; S.t = sceneStart(i) + 0.01; markSel(); renderInspector(); still(); B.querySelectorAll(".link-row").forEach((r, k) => r.classList.toggle("sel", k === i)); } });
   B.querySelectorAll("[data-fetch-id]").forEach(b => b.onclick = () => { const s = sc.find(x => x.id === b.dataset.fetchId); if (s) fetchScene(s); });
+  B.querySelectorAll("[data-full-id]").forEach(b => b.onclick = () => openFullCutter(b.dataset.fullId));
+  checkSources(sc.map(s => cleanUrl(s.src.url)));
   B.querySelector("#fetch-all").onclick = async () => {
     const todo = sc.filter(s => cleanUrl(s.src.url) && !ACTIVE.includes((S.jobs[s.id] || {}).state) && (!s.mediaId || ((S.media[s.mediaId] || {}).source || {}).url !== cleanUrl(s.src.url)));
     if (!todo.length) return toast(sc.some(s => cleanUrl(s.src.url)) ? "Every link is already downloaded." : "Paste at least one link first.");
@@ -1915,6 +2049,7 @@ function renderInspector() {
       ${cleanUrl(s.src.url) ? `<div class="row fetchrow"><button class="btn sm ${m ? "ghost" : ""}" id="s-fetch" data-fetch-id="${s.id}" ${ACTIVE.includes((S.jobs[s.id] || {}).state) ? "disabled" : ""}>${m ? "Fetch again from link" : "Fetch clip from link"}</button><span class="jobwrap" id="job-${s.id}">${jobLine(s.id)}</span></div>` : ""}
       ${m && m.type === "video" ? `<div class="cut-sum"><span>Using</span><b>${fmt(s.trim)} → ${fmt(s.trim + s.dur)}</b><span>of a ${fmt(m.duration)} clip</span></div>
         <button class="btn sm primary" id="s-cut">Cut clip</button>` : ""}
+      ${cleanUrl(s.src.url) ? `<button class="btn sm" id="s-full" data-full-id="${s.id}">${I.play}${fullBtnLabel(cleanUrl(s.src.url))}</button>` : ""}
       ${m ? `<div class="field"><label for="s-zoom">Zoom</label><input type="range" id="s-zoom" min="1" max="2.5" step="0.05" value="${s.zoom}"></div>
         <div class="field"><label for="s-pan">Frame left ↔ right</label><input type="range" id="s-pan" min="-1" max="1" step="0.05" value="${s.panX}"></div>
         <div class="field"><label for="s-pany">Frame up ↕ down</label><input type="range" id="s-pany" min="-1" max="1" step="0.05" value="${s.panY || 0}"></div>
@@ -1929,6 +2064,7 @@ function renderInspector() {
   q("#s-dur").onchange = e => { upd(() => s.dur = Math.max(0.5, Math.min(MAX_CLIP, +e.target.value || 3))); if (+e.target.value > MAX_CLIP) { e.target.value = MAX_CLIP; toast(`Clips are ${MAX_CLIP} seconds at most.`); } updateClock(); };
   q("#s-media").onchange = e => { upd(() => { s.mediaId = e.target.value || null; s.trim = 0; onVideoSet(S.sel); }); renderInspector(); };
   const ct = q("#s-cut"); if (ct) ct.onclick = () => openCutter(S.sel);
+  const fu = q("#s-full"); if (fu) fu.onclick = () => openFullCutter(s.id);
   q("#s-up").onclick = () => pickFiles(true);
   const tr = q("#s-trim"); if (tr) tr.oninput = e => { s.trim = +e.target.value; q("#trim-l").textContent = `Start at ${s.trim.toFixed(1)} s of ${m.duration.toFixed(1)} s`; S.t = sceneStart(S.sel); upd(() => {}, false); };
   const fit = q("#s-fit"); if (fit) fit.onclick = () => { upd(() => s.dur = Math.max(0.5, Math.min(MAX_CLIP, Math.round((m.duration - s.trim) * 10) / 10))); renderInspector(); };
